@@ -136,13 +136,16 @@ CREATE TABLE transactions (
 );
 
 CREATE TABLE audit_trail (
-    audit_id INT AUTO_INCREMENT PRIMARY KEY,
-    transaction_id INT NOT NULL,
-    event_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    audit_id        INT AUTO_INCREMENT PRIMARY KEY,
+    transaction_id  INT          NULL,
+    listing_id      INT          NULL,
+    client_id       INT          NULL,
+    action          VARCHAR(50)  NULL,
+    new_status      VARCHAR(20)  NULL,
+    event_time      DATETIME     DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_audit_transaction
         FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id)
-        ON DELETE CASCADE
-        ON UPDATE CASCADE
+        ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE feedback (
