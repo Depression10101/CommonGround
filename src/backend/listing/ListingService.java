@@ -297,6 +297,10 @@ public class ListingService {
         try {
             boolean updated = listingDAO.update(existing);
             if (updated) {
+                // AUDIT TRAIL - KELLY
+                ListingAuditLogger.logAsync(listingId, clientId,
+                        ListingAuditLogger.ACTION_EDIT, existing.getStatus());
+
                 return ServiceResult.success("Listing updated successfully.", listingId);
             } else {
                 return ServiceResult.fail(
@@ -340,6 +344,10 @@ public class ListingService {
         try {
             boolean deleted = listingDAO.softDelete(listingId, clientId);
             if (deleted) {
+                // AUDIT TRAIL - KELLY
+                ListingAuditLogger.logAsync(listingId, clientId,
+                        ListingAuditLogger.ACTION_DELETE, Listing.STATUS_REMOVED);
+
                 return ServiceResult.success(
                     "Your listing has been removed successfully.", listingId
                 );
@@ -372,6 +380,10 @@ public class ListingService {
         try {
             boolean updated = listingDAO.updateStatus(listingId, clientId, newStatus);
             if (updated) {
+                // AUDIT TRAIL - KELLY
+                ListingAuditLogger.logAsync(listingId, clientId,
+                        ListingAuditLogger.ACTION_STATUS, newStatus);
+
                 return ServiceResult.success(
                     "Listing status updated to: " + newStatus, listingId
                 );
