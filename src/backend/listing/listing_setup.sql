@@ -60,3 +60,36 @@ SELECT COUNT(*) AS category_count FROM category;
 -- Gets categories making sure it gets it from ListingCategory
 
 --test laters makes sure if things are passing things this is what I used to see if this would even work...
+-- AUDIT TRAIL TABLE (needed for ListingAuditLogger.java and Test 21)
+-- Kelly: this is the table your audit trail feature will also write to
+-- You can ADD columns here later for transaction_id etc. without breaking anything
+
+USE CommonGround_db;
+DESCRIBE audit_trail;
+DROP TABLE IF EXISTS audit_trail;
+CREATE TABLE audit_trail (
+    audit_id    INT AUTO_INCREMENT PRIMARY KEY,
+    listing_id  INT         NULL,
+    client_id   INT         NULL,
+    action      VARCHAR(50) NULL,
+    new_status  VARCHAR(20) NULL,
+    timestamp   VARCHAR(50) NULL
+);
+ 
+-- Verify it worked
+DESCRIBE audit_trail;
+SELECT 'audit_trail table ready!' AS status;
+  
+CREATE TABLE IF NOT EXISTS audit_trail (
+    audit_id    INT AUTO_INCREMENT PRIMARY KEY,
+    listing_id  INT         NOT NULL,
+    client_id   INT         NOT NULL,
+    action      VARCHAR(50) NOT NULL,
+    new_status  VARCHAR(20) NOT NULL,
+    timestamp   VARCHAR(50) NOT NULL,
+    FOREIGN KEY (listing_id) REFERENCES listing(listing_id),
+    FOREIGN KEY (client_id)  REFERENCES client(account_id)
+);
+ 
+SELECT 'audit_trail table:' AS check_table;
+SELECT COUNT(*) AS audit_row_count FROM audit_trail;

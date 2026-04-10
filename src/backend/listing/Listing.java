@@ -60,10 +60,7 @@ public class Listing {
     private String createdAt;
 
 
-    // ──────────────────────────────────────────────────────────────────────
-    // CONSTRUCTORS
-    // ──────────────────────────────────────────────────────────────────────
-
+  //constructors 
 
     //default fillers for constructors so it doesnt break
     public Listing() {

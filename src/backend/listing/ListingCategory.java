@@ -64,11 +64,6 @@ public enum ListingCategory {
     }
 
 
-    // ──────────────────────────────────────────────────────────────────────
-    // UTILITY METHODS
-    // Helper methods used by ListingService during validation.
-    // ──────────────────────────────────────────────────────────────────────
-
   //checks for valid category 
 
     public static boolean isValid(String displayName) {

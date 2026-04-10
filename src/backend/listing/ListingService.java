@@ -132,10 +132,18 @@ public class ListingService {
             itemCondition,
             paymentType
         );
-
-        try {
+    try {
             int newId = listingDAO.insert(listing);
             if (newId > 0) {
+                // AUDIT TRAIL - KELLY
+                // Runs async so it doesn't slow down the response (we said this in the document)
+                ListingAuditLogger.logAsync(
+                    newId, clientId,
+                    ListingAuditLogger.ACTION_CREATE,
+                    Listing.STATUS_AVAILABLE
+                );
+               
+ 
                 return ServiceResult.success(
                     "Listing created! Your item is now available for buyers to see.",
                     newId

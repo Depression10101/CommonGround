@@ -113,6 +113,7 @@ public class ListingTest {
         test18_GetMyListings();
         test19_CategoryEnumValidation();
         test20_PriceDisplay();
+        test21_AuditTrailWrittenAfterCreate();
 
        //summary at the end 
         System.out.println();
@@ -728,6 +729,64 @@ public class ListingTest {
             fail("TEST 20",
                  "Price formatting issue. t1=" + t1 + " t2=" + t2 +
                  " t3=" + t3 + " t4=" + t4 + " t5=" + t5);
+        }
+    }
+
+
+private static void test21_AuditTrailWrittenAfterCreate() {
+        System.out.println("TEST 21: Audit trail record written after createListing()");
+ 
+        // Create a listing — this should trigger ListingAuditLogger.logAsync()
+        ServiceResult result = service.createListing(
+            TEST_CLIENT_ID, TEST_LOCATION_ID,
+            "Books & Magazines",
+            "Audit Test Book",
+            5.00,
+            "Testing that audit trail fires after create.",
+            "Good",
+            "Cash"
+        );
+ 
+        if (!result.isSuccess()) {
+            fail("TEST 21", "Could not create listing to test audit trail. Msg: " + result.getMessage());
+            return;
+        }
+ 
+        int auditListingId = result.getId();
+ 
+        // Give the background thread a moment to write the record
+        // (logAsync() fires a daemon thread — we wait briefly before checking)
+        try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+ 
+        // Now query the audit_trail table directly to verify a record exists
+        // Kelly: if your table name or column names differ, update the SQL below
+        String sql = "SELECT COUNT(*) FROM audit_trail " +
+                     "WHERE listing_id = ? AND client_id = ? AND action = ?";
+ 
+        try (java.sql.Connection conn = java.sql.DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306/CommonGround_db", "cguser", "cgpass123");
+             java.sql.PreparedStatement stmt = conn.prepareStatement(sql)) {
+ 
+            stmt.setInt   (1, auditListingId);
+            stmt.setInt   (2, TEST_CLIENT_ID);
+            stmt.setString(3, ListingAuditLogger.ACTION_CREATE);
+ 
+            java.sql.ResultSet rs = stmt.executeQuery();
+            if (rs.next() && rs.getInt(1) > 0) {
+                pass("TEST 21",
+                     "Audit record found for listing_id=" + auditListingId +
+                     " action=CreateListing. AuditTrail hook is working!");
+            } else {
+                fail("TEST 21",
+                     "No audit record found for listing_id=" + auditListingId +
+                     ". Check that the audit_trail table exists with the right columns." +
+                     " Needed: listing_id, client_id, action, new_status, timestamp");
+            }
+ 
+        } catch (java.sql.SQLException e) {
+            fail("TEST 21",
+                 "Could not query audit_trail table: " + e.getMessage() +
+                 ". Make sure Kelly's audit_trail table is created in the DB first.");
         }
     }
 
