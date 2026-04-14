@@ -44,6 +44,16 @@ CREATE TABLE location (
     vetted BOOLEAN DEFAULT FALSE
 );
 
+INSERT INTO location (address, latitude, longitude, name, vetted)
+values
+('1200 Travis St Houston TX', 29.75568, -95.36739, 'HPD Headquarter', true),
+('7525 Sherman St Houston TX', 29.73425, -95.29035, 'HPD Magnolia Park', true),
+('5600 S Willow Dr 116 Houston TX', 29.65195, -95.47672, 'HPD Westbury', true),
+('6000 Teague Rd Houston TX', 29.85814, -95.53938, 'HPD Northwest', true),
+('3203 Dairy Ashford Rd Houston TX', 29.74083, -95.60423, 'HPD Westside', true),
+('9455 W Montgomery Rd Houston TX', 29.88620, -95.44561, 'HPD North', true),
+('8300 Mykawa Rd Houston TX', 29.66628, -95.32202, 'HPD Southeast', true);
+
 CREATE TABLE category (
     category_id INT AUTO_INCREMENT PRIMARY KEY,
     category_name VARCHAR(50) NOT NULL UNIQUE
