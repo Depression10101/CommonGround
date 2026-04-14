@@ -1,87 +1,85 @@
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
+class FeedBack {
+    private int feedbackId;
+    private int buyerId;
+    private int sellerId;
+    private int listingId;
+    private int rating;
+    private String ratingDesc;
+    private String reportDesc;
+    private boolean report;
 
-public class FeedBackSystem {
-    private static final Scanner scanner = new Scanner(System.in);
-    private static final List<FeedBack> feedbacklist = new ArrayList<>();
-
-    public static void main(String[] args){
-        System.out.print("====FeedBack Collection System====");
-
-        while (true) {
-            System.out.println("\n1. Submit Feedback");
-            System.out.println("2. View All Feedback");
-            System.out.println("3. Exit");
-            System.out.print("Choose an option: ");
-
-            String choice = scanner.nextLine().trim();
-
-            switch (choice) {
-                case "1":
-                    collectFeedback();
-                    break;
-                case "2":
-                    displayFeedback();
-                    break;
-                case "3":
-                    System.out.println("Exiting... Thank you!");
-                    return;
-                default:
-                    System.out.println("Invalid choice. Please try again");
-            }
-        }
+    public FeedBack(int buyerId, int sellerId, int listingId, int rating, String ratingDesc) {
+        this.buyerId = buyerId;
+        this.sellerId = sellerId;
+        this.listingId = listingId;
+        this.rating = rating; 
+        this.ratingDesc = ratingDesc;
+        this.report = false;
     }
 
-    private static void collectFeedback(){
-        System.out.print("Enter your name: ");
-        String name = scanner.nextLine().trim();
-        if (name.isEmpty()){
-            System.out.println("Name cannot be empty");
-            return;
-        }
-
-        System.out.print("Enter your email: ");
-        String email = scanner.nextLine().trim();
-        if (!email.matches("^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$")){
-            System.out.println("Invalid email format.");
-            return;
-        }
-
-        System.out.print("Enter your feedback message: ");
-        String message  = scanner.nextLine().trim();
-        if (message.isEmpty()){
-            System.out.println("Feedback message cannot be empty");
-            return;
-        }
-
-        System.out.print("Enter rating (1-5): ");
-        int rating;
-        try{
-            rating = Integer.parseInt(scanner.nextLine().trim());
-            if (rating < 1 || rating > 5){
-                System.out.println("Rating must be between 1 and 5.");
-                return;
-            }
-        } catch (NumberFormatException e){
-            System.out.println("Invalid rating. Please enter a number between (1-5).");
-            return;
-        }
-
-        feedbacklist.add(new FeedBack(name, email, message, rating));
-        System.out.println("Thank you! Your feedback has been recorded.");
-
+    public FeedBack(int buyerId, int sellerId, int listingId, int rating, String ratingDesc, String reportDesc) {
+        this.buyerId = buyerId;
+        this.sellerId = sellerId;
+        this.listingId = listingId;
+        this.rating = rating; 
+        this.ratingDesc = ratingDesc;
+        this.reportDesc = reportDesc;
+        this.report = true;
     }
 
-    private static void displayFeedback() {
-        if (feedbacklist.isEmpty()) {
-            System.out.println("No feedback available.");
-        } else {
-            System.out.println("\n=== All Feedback ===");
-            for (FeedBack fb : feedbacklist) {
-                System.out.println(fb);
-                System.out.println("-----------------");
-            }
+    public int getFeedbackId(){
+        return feedbackId;
+    }
+
+    public void setFeedbackId(int feedbackId){
+        this.feedbackId = feedbackId;
+    }
+
+    public int getBuyerId() {
+        return buyerId;
+    }
+
+    public int getSellerId(){
+        return sellerId;
+    }
+
+    public int getListingId() {
+        return listingId;
+    }
+
+    public int getRating() {
+        return rating;
+    }
+
+    public String getRatingDesc(){
+        return ratingDesc;
+    }
+
+    public String getReportDesc(){
+        return  reportDesc;
+    }
+
+    public boolean isReport(){
+        return report;
+    }
+
+    public void setReport(boolean report){
+        this.report = report;
+    }
+
+    @Override
+    public String toString(){
+        String type = report ? "REPORT" : "REVIEW";
+        String base = "FeedbackID: " + feedbackId +
+               " | Type: " + type +
+               " | Buyer: " + buyerId +
+               " | Seller: " + sellerId +
+               " | Listing: " + listingId +
+               " | Rating: " + rating +
+               " (" + (reportDesc != null ? ratingDesc : "N/A") + ")";
+        if (report && reportDesc != null) {
+            base += " | Report: " + reportDesc;
         }
+        return base;
     }
 }
