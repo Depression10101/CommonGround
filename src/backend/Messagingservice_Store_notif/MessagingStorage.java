@@ -5,23 +5,23 @@ class MessagingService
         this.msgId = msgId;
         this.senderId = senderId;
         this.RecieverId = recieverId;
-        this.msg = msg;
-        this.date = date;
+        this.msgTxt = msgTxt;
+        this.date = date;//when message was sent
     }
 
-    public String[] GetConversation(int userId1, int userId2)
+    public String[] GetConversation(int senderId, int recieverId)//grabs all messages between senderId and recieverId and returns them in an array
     {
         
     }
 
-    public String GetMessage(int userId)
+    public String GetMessage(int senderId)//grabs message with senderId and returns it
     {
 
     }
 
     public void DeleteMsgRec(int msgId)
     {
-        
+
     }
 
 
