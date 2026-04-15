@@ -1,0 +1,140 @@
+package database;
+
+import transactions.Transaction;
+import transactions.TransactionStatus;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * TransactionDatabase — Simulated database layer for transaction persistence.
+ *
+ * Corresponds to the Database class in the CommonGround class diagram:
+ *   Transactions(bxnID)
+ */
+public class TransactionDatabase {
+
+    // Simulated in-memory storage (maps transaction ID → Transaction object)
+    private static final Map<String, Transaction> transactionStore = new HashMap<>();
+
+    // Simulated listing-to-transaction index (maps listing ID → transaction ID)
+    private static final Map<String, String> listingTransactionIndex = new HashMap<>();
+
+    // ─── Save ────────────────────────────────────────────────────────────────
+
+    /**
+     * Saves a new transaction to the database.
+     *
+     * @param transaction The transaction to save.
+     */
+    public static void saveTransaction(Transaction transaction) {
+        if (transaction == null) {
+            System.out.println("[TransactionDatabase] saveTransaction FAILED: transaction is null.");
+            return;
+        }
+
+        transactionStore.put(transaction.getBxnID(), transaction);
+        listingTransactionIndex.put(transaction.getListingID(), transaction.getBxnID());
+
+        System.out.println("[TransactionDatabase] Saved transaction: " + transaction.getBxnID());
+    }
+
+    // ─── Transactions(bxnID) — from class diagram ─────────────────────────────
+
+    /**
+     * Retrieves a transaction by its ID.
+     * This is the Transactions(bxnID) method from the Database class in the diagram.
+     *
+     * @param bxnID The transaction ID.
+     * @return The matching Transaction, or null if not found.
+     */
+    public static Transaction getTransaction(String bxnID) {
+        Transaction txn = transactionStore.get(bxnID);
+        if (txn == null) {
+            System.out.println("[TransactionDatabase] getTransaction: no record found for ID " + bxnID);
+        }
+        return txn;
+    }
+
+    // ─── Status Update ───────────────────────────────────────────────────────
+
+    /**
+     * Updates the status of an existing transaction in the database.
+     *
+     * @param bxnID     The transaction ID.
+     * @param newStatus The new status to set.
+     */
+    public static void updateTransactionStatus(String bxnID, TransactionStatus newStatus) {
+        if (!transactionStore.containsKey(bxnID)) {
+            System.out.println("[TransactionDatabase] updateTransactionStatus FAILED: transaction " + bxnID + " not found.");
+            return;
+        }
+
+        // In a real DB this would run: UPDATE transactions SET status=? WHERE bxn_id=?
+        System.out.println("[TransactionDatabase] Updated transaction " + bxnID + " status to: " + newStatus);
+    }
+
+    // ─── Lookup by Listing ───────────────────────────────────────────────────
+
+    /**
+     * Finds the transaction associated with a given listing.
+     *
+     * @param listingID The listing ID.
+     * @return The Transaction for that listing, or null if none exists.
+     */
+    public static Transaction getTransactionByListing(String listingID) {
+        String bxnID = listingTransactionIndex.get(listingID);
+        if (bxnID == null) {
+            System.out.println("[TransactionDatabase] No transaction found for listing: " + listingID);
+            return null;
+        }
+        return transactionStore.get(bxnID);
+    }
+
+    // ─── User History ────────────────────────────────────────────────────────
+
+    /**
+     * Returns all transactions for a given user (as buyer or seller).
+     *
+     * @param userID The user ID.
+     * @return List of transactions involving this user.
+     */
+    public static List<Transaction> getTransactionsByUser(String userID) {
+        List<Transaction> results = new ArrayList<>();
+        for (Transaction txn : transactionStore.values()) {
+            if (txn.getBuyerUserID().equals(userID) || txn.getSellerUserID().equals(userID)) {
+                results.add(txn);
+            }
+        }
+        System.out.println("[TransactionDatabase] Found " + results.size() + " transactions for user: " + userID);
+        return results;
+    }
+
+    /**
+     * Returns all transactions with a specific status.
+     *
+     * @param status The status to filter by.
+     * @return List of matching transactions.
+     */
+    public static List<Transaction> getTransactionsByStatus(TransactionStatus status) {
+        List<Transaction> results = new ArrayList<>();
+        for (Transaction txn : transactionStore.values()) {
+            if (txn.getStatus() == status) {
+                results.add(txn);
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Returns the total number of transactions in the database.
+     *
+     * @return Count of all stored transactions.
+     */
+    public static int getTotalTransactionCount() {
+        return transactionStore.size();
+    }
+}
+

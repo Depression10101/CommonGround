@@ -4,7 +4,6 @@ USE CommonGround_db;
 
 DROP TABLE IF EXISTS audit_trail;
 DROP TABLE IF EXISTS feedback;
-DROP TABLE IF EXISTS message_image;
 DROP TABLE IF EXISTS listing_image;
 DROP TABLE IF EXISTS message;
 DROP TABLE IF EXISTS transactions;
@@ -44,10 +43,29 @@ CREATE TABLE location (
     vetted BOOLEAN DEFAULT FALSE
 );
 
+INSERT INTO location (address, latitude, longitude, name, vetted)
+values
+('1200 Travis St Houston TX', 29.75568, -95.36739, 'HPD Headquarter', true),
+('7525 Sherman St Houston TX', 29.73425, -95.29035, 'HPD Magnolia Park', true),
+('5600 S Willow Dr 116 Houston TX', 29.65195, -95.47672, 'HPD Westbury', true),
+('6000 Teague Rd Houston TX', 29.85814, -95.53938, 'HPD Northwest', true),
+('3203 Dairy Ashford Rd Houston TX', 29.74083, -95.60423, 'HPD Westside', true),
+('9455 W Montgomery Rd Houston TX', 29.88620, -95.44561, 'HPD North', true),
+('8300 Mykawa Rd Houston TX', 29.66628, -95.32202, 'HPD Southeast', true);
+
 CREATE TABLE category (
     category_id INT AUTO_INCREMENT PRIMARY KEY,
     category_name VARCHAR(50) NOT NULL UNIQUE
 );
+
+INSERT INTO category (category_name)
+value
+('Clothing'),
+('Furniture'),
+('Electronic'),
+('Automotive'),
+('Jewelry'),
+('Tools');
 
 CREATE TABLE listing (
     listing_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -103,18 +121,6 @@ CREATE TABLE message (
         ON UPDATE CASCADE
 );
 
-CREATE TABLE message_image (
-    message_image_id INT AUTO_INCREMENT PRIMARY KEY,
-    message_id INT NOT NULL,
-    file_name VARCHAR(255) NOT NULL,
-    file_path VARCHAR(255) NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_message_image_message
-        FOREIGN KEY (message_id) REFERENCES message(message_id)
-        ON DELETE CASCADE
-        ON UPDATE CASCADE
-);
-
 CREATE TABLE transactions (
     transaction_id INT AUTO_INCREMENT PRIMARY KEY,
     buyer_id INT NOT NULL,
@@ -138,16 +144,17 @@ CREATE TABLE transactions (
 );
 
 CREATE TABLE audit_trail (
-    audit_id        INT AUTO_INCREMENT PRIMARY KEY,
-    transaction_id  INT          NULL,
-    listing_id      INT          NULL,
-    client_id       INT          NULL,
-    action          VARCHAR(50)  NULL,
-    new_status      VARCHAR(20)  NULL,
-    event_time      DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    audit_id INT AUTO_INCREMENT PRIMARY KEY,
+    transaction_id INT NOT NULL,
+    listing_id INT NOT NULL,
+    client_id INT NOT NULL,
+    action VARCHAR(50),
+    new_status VARCHAR(20),
+    event_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_audit_transaction
         FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id)
-        ON DELETE CASCADE ON UPDATE CASCADE
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
 );
 
 CREATE TABLE feedback (
@@ -158,7 +165,7 @@ CREATE TABLE feedback (
     rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
     rating_report BOOLEAN DEFAULT FALSE,
     rating_desc VARCHAR(255),
-    review_desc TEXT,
+    report_desc TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_feedback_buyer
         FOREIGN KEY (buyer_id) REFERENCES client(account_id)
