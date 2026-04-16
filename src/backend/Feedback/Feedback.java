@@ -1,4 +1,6 @@
-class FeedBack {
+package com.commonground.feedback;
+
+public class FeedBack {
     private int feedbackId;
     private int buyerId;
     private int sellerId;
