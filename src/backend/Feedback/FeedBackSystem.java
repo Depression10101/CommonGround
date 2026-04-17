@@ -1,5 +1,11 @@
 package com.commonground.feedback;
 
+/*
+There could be some changes made if I did not understand the design.
+I added things that the user can do but I'm not sure if we want the user to be able to do all of these things update if needed.
+Change names too if they do not make sense.
+*/
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,8 +16,8 @@ public class FeedBackSystem {
     private static final Scanner sc = new Scanner(System.in);
     // Connect to the Database
     private static final String url = "jdbc:mysql://localhost:3306/CommonGround_db";
-    private static final String user = "root";//"cguser";
-    private static final String pass = "Messi10?";//"cgpass123";
+    private static final String user = "root";
+    private static final String pass = "root";
 
     public static void main(String[] args) {
         System.out.print("====FeedBack Collection System====");

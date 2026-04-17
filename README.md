@@ -1,5 +1,5 @@
 
-  # Common Ground UI portion (Copy)
+  # Common Ground UI portion ()
 
   This is a code bundle for Common Ground UI portion (Copy). The original project is available at https://www.figma.com/design/R8rpfpHRdYENxbfYMmUeMk/Common-Ground-UI-portion--Copy-.
 
