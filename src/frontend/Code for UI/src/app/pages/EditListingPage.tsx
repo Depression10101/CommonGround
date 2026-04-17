@@ -39,6 +39,19 @@ export function EditListingPage() {
       return;
     }
 
+    // Prevent admin and banned users from editing listings
+    if (user?.email === 'admin@email.com') {
+      toast.error('Admin accounts cannot edit listings');
+      navigate('/');
+      return;
+    }
+
+    if (user?.bannedFromListing) {
+      toast.error('Your account is restricted from editing listings');
+      navigate('/');
+      return;
+    }
+
     const foundListing = allListings.find((l) => l.id === Number(id));
     if (!foundListing) {
       toast.error('Listing not found');
@@ -120,14 +133,11 @@ export function EditListingPage() {
     <div className="min-h-screen bg-red-50 relative overflow-x-hidden">
       {/* Background Pattern */}
       <div className="fixed inset-0 pointer-events-none opacity-5 z-0">
-        <div className="absolute top-20 left-1/4 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute top-40 right-1/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute top-60 left-1/2 w-30 h-30 bg-black rounded-full"></div>
-        <div className="absolute top-96 right-1/4 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute bottom-60 left-1/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute bottom-40 right-1/2 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute top-1/3 left-2/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute bottom-1/3 right-2/3 w-30 h-30 bg-black rounded-full"></div>
+        <div className="absolute top-40 left-1/4 w-24 h-24 bg-black rounded-full"></div>
+        <div className="absolute top-96 right-1/3 w-18 h-18 bg-black rounded-full"></div>
+        <div className="absolute top-[600px] left-1/2 w-30 h-30 bg-black rounded-full"></div>
+        <div className="absolute bottom-80 right-1/4 w-24 h-24 bg-black rounded-full"></div>
+        <div className="absolute bottom-40 left-1/3 w-18 h-18 bg-black rounded-full"></div>
       </div>
 
       {/* Header */}

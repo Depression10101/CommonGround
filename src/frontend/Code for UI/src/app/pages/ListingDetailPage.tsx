@@ -8,6 +8,7 @@ import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { Listing } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { SiteLogo } from '../components/SiteLogo';
+import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,6 +80,10 @@ export function ListingDetailPage() {
   const handleMessageClick = () => {
     if (!user) {
       setShowLoginAlert(true);
+    } else if (user.email === 'admin@email.com') {
+      toast.error('Admin accounts cannot message sellers');
+    } else if (user.bannedFromPurchasing) {
+      toast.error('Your account is restricted from purchasing');
     } else {
       setIsMessageDialogOpen(true);
     }
@@ -98,14 +103,11 @@ export function ListingDetailPage() {
     <div className="min-h-screen bg-red-50">
       {/* Background Pattern */}
       <div className="fixed inset-0 pointer-events-none opacity-5 z-0">
-        <div className="absolute top-20 left-1/4 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute top-40 right-1/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute top-60 left-1/2 w-30 h-30 bg-black rounded-full"></div>
-        <div className="absolute top-96 right-1/4 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute bottom-60 left-1/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute bottom-40 right-1/2 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute top-1/3 left-2/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute bottom-1/3 right-2/3 w-30 h-30 bg-black rounded-full"></div>
+        <div className="absolute top-40 left-1/4 w-24 h-24 bg-black rounded-full"></div>
+        <div className="absolute top-96 right-1/3 w-18 h-18 bg-black rounded-full"></div>
+        <div className="absolute top-[600px] left-1/2 w-30 h-30 bg-black rounded-full"></div>
+        <div className="absolute bottom-80 right-1/4 w-24 h-24 bg-black rounded-full"></div>
+        <div className="absolute bottom-40 left-1/3 w-18 h-18 bg-black rounded-full"></div>
       </div>
 
       {/* Header */}
@@ -260,6 +262,14 @@ export function ListingDetailPage() {
                       Delete Listing
                     </Button>
                   </div>
+                ) : user?.email === 'admin@email.com' ? (
+                  <div className="bg-gray-100 border border-gray-300 rounded-lg p-4 text-center">
+                    <p className="text-gray-600 text-sm">Admin accounts cannot purchase items</p>
+                  </div>
+                ) : user?.bannedFromPurchasing ? (
+                  <div className="bg-red-100 border border-red-300 rounded-lg p-4 text-center">
+                    <p className="text-red-700 text-sm font-semibold">Your account is restricted from purchasing</p>
+                  </div>
                 ) : (
                   <Button
                     onClick={handleMessageClick}
@@ -280,6 +290,7 @@ export function ListingDetailPage() {
         isOpen={isMessageDialogOpen}
         onClose={() => setIsMessageDialogOpen(false)}
         listerName={listing.listerName}
+        listerEmail={listing.listerEmail || ''}
         listingTitle={listing.title}
       />
 

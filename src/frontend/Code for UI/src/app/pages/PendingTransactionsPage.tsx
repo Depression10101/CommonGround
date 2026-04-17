@@ -8,6 +8,9 @@ import { SiteLogo } from '../components/SiteLogo';
 interface Transaction {
   id: string;
   userId: string;
+  buyerEmail: string;
+  buyerName: string;
+  sellerEmail: string;
   sellerName: string;
   listingTitle: string;
   agreedPrice: number;
@@ -33,13 +36,13 @@ export function PendingTransactionsPage() {
       return;
     }
 
-    // Load pending transactions
+    // Load pending transactions (where user is buyer OR seller)
     const transactionsJson = localStorage.getItem('transactions');
     if (transactionsJson) {
       const allTransactions = JSON.parse(transactionsJson);
       const pending = allTransactions.filter(
         (t: Transaction) =>
-          t.userId === user.id &&
+          (t.userId === user.id || t.sellerEmail === user.email) &&
           t.status !== 'completed' &&
           t.status !== 'cancelled'
       );
@@ -48,24 +51,44 @@ export function PendingTransactionsPage() {
   }, [user, navigate]);
 
   const getStatusBadge = (transaction: Transaction) => {
+    const isSeller = transaction.sellerEmail === user?.email;
+
     if (transaction.buyerConfirmed && transaction.sellerConfirmed) {
       return (
         <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
           Both Confirmed
         </span>
       );
-    } else if (transaction.buyerConfirmed) {
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-          Waiting for Seller
-        </span>
-      );
+    } else if (isSeller) {
+      // Seller view
+      if (transaction.buyerConfirmed) {
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+            Awaiting Your Confirmation
+          </span>
+        );
+      } else {
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+            Waiting for Buyer
+          </span>
+        );
+      }
     } else {
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
-          Awaiting Your Confirmation
-        </span>
-      );
+      // Buyer view
+      if (transaction.buyerConfirmed) {
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+            Waiting for Seller
+          </span>
+        );
+      } else {
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+            Awaiting Your Confirmation
+          </span>
+        );
+      }
     }
   };
 
@@ -73,14 +96,11 @@ export function PendingTransactionsPage() {
     <div className="min-h-screen bg-red-50">
       {/* Background Pattern */}
       <div className="fixed inset-0 pointer-events-none opacity-5 z-0">
-        <div className="absolute top-20 left-1/4 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute top-40 right-1/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute top-60 left-1/2 w-30 h-30 bg-black rounded-full"></div>
-        <div className="absolute top-96 right-1/4 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute bottom-60 left-1/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute bottom-40 right-1/2 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute top-1/3 left-2/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute bottom-1/3 right-2/3 w-30 h-30 bg-black rounded-full"></div>
+        <div className="absolute top-40 left-1/4 w-24 h-24 bg-black rounded-full"></div>
+        <div className="absolute top-96 right-1/3 w-18 h-18 bg-black rounded-full"></div>
+        <div className="absolute top-[600px] left-1/2 w-30 h-30 bg-black rounded-full"></div>
+        <div className="absolute bottom-80 right-1/4 w-24 h-24 bg-black rounded-full"></div>
+        <div className="absolute bottom-40 left-1/3 w-18 h-18 bg-black rounded-full"></div>
       </div>
 
       {/* Header */}
@@ -132,20 +152,24 @@ export function PendingTransactionsPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {transactions.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="border border-gray-200 rounded-lg p-6 hover:border-red-300 transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 text-lg mb-1">
-                        {transaction.listingTitle}
-                      </h3>
-                      <p className="text-sm text-gray-600">Seller: {transaction.sellerName}</p>
+              {transactions.map((transaction) => {
+                const isSeller = transaction.sellerEmail === user?.email;
+                return (
+                  <div
+                    key={transaction.id}
+                    className="border border-gray-200 rounded-lg p-6 hover:border-red-300 transition-colors"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 text-lg mb-1">
+                          {transaction.listingTitle}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          {isSeller ? `Buyer: ${transaction.buyerName}` : `Seller: ${transaction.sellerName}`}
+                        </p>
+                      </div>
+                      {getStatusBadge(transaction)}
                     </div>
-                    {getStatusBadge(transaction)}
-                  </div>
 
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="flex items-center gap-2 text-sm">
@@ -189,6 +213,8 @@ export function PendingTransactionsPage() {
                           state: {
                             transactionId: transaction.id,
                             sellerName: transaction.sellerName,
+                            sellerEmail: transaction.sellerEmail,
+                            buyerName: transaction.buyerName,
                             listingTitle: transaction.listingTitle,
                             agreedPrice: transaction.agreedPrice,
                             paymentMethod: transaction.paymentMethod,
@@ -202,7 +228,8 @@ export function PendingTransactionsPage() {
                     </Button>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </div>
