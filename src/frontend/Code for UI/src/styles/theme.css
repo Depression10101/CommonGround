@@ -171,6 +171,12 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
+    cursor: pointer;
+  }
+
+  /* Add cursor pointer to all interactive elements */
+  a, button, [role="button"], [type="button"], [type="submit"], [type="reset"] {
+    cursor: pointer;
   }
 
   input {

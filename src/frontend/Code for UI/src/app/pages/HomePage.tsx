@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { User, Plus, LogOut } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { User, Plus, LogOut, HelpCircle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { ListingCard } from '../components/ListingCard';
 import { FilterSection, CheckboxFilter } from '../components/FilterSection';
@@ -7,6 +7,7 @@ import { listings } from '../data/listings';
 import { FilterState, Listing } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { ChatSidebar } from '../components/ChatSidebar';
+import { SiteLogo } from '../components/SiteLogo';
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -19,6 +20,21 @@ export function HomePage() {
   });
 
   const [sortBy, setSortBy] = useState('recommended');
+  const [pendingTransactionsCount, setPendingTransactionsCount] = useState(0);
+
+  useEffect(() => {
+    if (user) {
+      // Count pending transactions
+      const transactionsJson = localStorage.getItem('transactions');
+      const transactions = transactionsJson ? JSON.parse(transactionsJson) : [];
+      const pending = transactions.filter((t: any) =>
+        t.userId === user.id &&
+        t.status !== 'completed' &&
+        t.status !== 'cancelled'
+      );
+      setPendingTransactionsCount(pending.length);
+    }
+  }, [user]);
 
   // Combine default listings with user-created listings
   const allListings = useMemo(() => {
@@ -108,36 +124,50 @@ export function HomePage() {
         <div className="max-w-[1600px] mx-auto px-6 py-4 bg-[#00000000]">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
-              <div className="relative">
-                <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center bg-[#000000]">
-                  <div className="w-2 h-2 bg-white rounded-full absolute top-2 left-2"></div>
-                  <div className="w-2 h-2 bg-white rounded-full absolute top-2 right-2"></div>
-                  <div className="w-2 h-2 bg-white rounded-full absolute bottom-2 left-3 p-[0px] mx-[5px] my-[0px]"></div>
-                </div>
-              </div>
+              <SiteLogo />
               <h1 className="text-2xl font-bold text-white">Common Ground</h1>
             </div>
 
-            {isAuthenticated ? (
-              <button 
-                onClick={() => {
-                  signOut();
-                  navigate('/');
-                }}
-                className="flex items-center space-x-2 px-5 py-2.5 bg-black text-white hover:bg-gray-900 rounded-lg transition-colors bg-[#2a2a2a]"
-              >
-                <LogOut className="w-5 h-5" />
-                <span>Log Out</span>
-              </button>
-            ) : (
-              <button 
-                onClick={() => navigate('/auth')}
-                className="flex items-center space-x-2 px-5 py-2.5 bg-black text-white hover:bg-gray-900 rounded-lg transition-colors"
-              >
-                <User className="w-5 h-5" />
-                <span>Sign In</span>
-              </button>
-            )}
+            <div className="flex items-center space-x-4">
+              {!isAuthenticated && (
+                <button
+                  onClick={() => navigate('/help')}
+                  className="flex items-center space-x-2 px-5 py-2.5 bg-white text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-600"
+                >
+                  <HelpCircle className="w-5 h-5" />
+                  <span>Help</span>
+                </button>
+              )}
+              {isAuthenticated ? (
+                <>
+                  <button
+                    onClick={() => navigate(`/profile/${user!.email}`)}
+                    className="flex items-center space-x-2 px-5 py-2.5 bg-white text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-white"
+                  >
+                    <User className="w-5 h-5" />
+                    <span>{user!.name}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      signOut();
+                      navigate('/');
+                    }}
+                    className="flex items-center space-x-2 px-5 py-2.5 bg-black text-white hover:bg-gray-900 rounded-lg transition-colors bg-[#2a2a2a]"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    <span>Log Out</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => navigate('/auth')}
+                  className="flex items-center space-x-2 px-5 py-2.5 bg-black text-white hover:bg-gray-900 rounded-lg transition-colors"
+                >
+                  <User className="w-5 h-5" />
+                  <span>Sign In</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -303,9 +333,13 @@ export function HomePage() {
             {filteredAndSortedListings.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {filteredAndSortedListings.map((listing) => (
-                  <ListingCard 
-                    key={listing.id} 
-                    {...listing}
+                  <ListingCard
+                    key={listing.id}
+                    image={listing.image}
+                    title={listing.title}
+                    price={listing.price}
+                    postedDate={listing.postedDate}
+                    condition={listing.condition}
                     onClick={() => navigate(`/listing/${listing.id}`)}
                   />
                 ))}
@@ -325,7 +359,7 @@ export function HomePage() {
         </div>
       </div>
 
-      {/* Floating Post Listing Button (only for authenticated users) */}
+      {/* Floating Buttons (only for authenticated users) */}
       {isAuthenticated && (
         <>
           <button
@@ -335,6 +369,17 @@ export function HomePage() {
             <Plus className="w-6 h-6" />
             <span className="font-semibold pr-2">Post Listing</span>
           </button>
+
+          {/* Pending Transactions Button */}
+          {pendingTransactionsCount > 0 && (
+            <button
+              onClick={() => navigate('/pending-transactions')}
+              className="fixed bottom-24 right-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg transition-all hover:shadow-xl flex items-center space-x-2 z-50"
+            >
+              <Clock className="w-6 h-6" />
+              <span className="font-semibold pr-2">Pending ({pendingTransactionsCount})</span>
+            </button>
+          )}
 
           {/* Chat Sidebar */}
           <ChatSidebar />

@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Star, MapPin, Calendar, Mail, Phone, Flag, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, Star, MapPin, Calendar, Mail, Phone, Flag, User as UserIcon, Trash2, Package } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { useAuth } from '../context/AuthContext';
+import { SiteLogo } from '../components/SiteLogo';
 import {
   Dialog,
   DialogContent,
@@ -11,8 +13,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../components/ui/alert-dialog';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
+import { Listing } from '../types';
+import { listings as defaultListings } from '../data/listings';
+import { toast } from 'sonner';
 
 interface UserProfile {
   id: string;
@@ -26,26 +41,64 @@ interface UserProfile {
   phoneNumber?: string;
 }
 
+interface Review {
+  id: string;
+  reviewerName: string;
+  rating: number;
+  comment: string;
+  date: string;
+  listingTitle?: string;
+}
+
 export function ProfilePage() {
   const { email } = useParams<{ email: string }>();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportDescription, setReportDescription] = useState('');
   const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [deleteReviewId, setDeleteReviewId] = useState<string | null>(null);
+  const [userListings, setUserListings] = useState<Listing[]>([]);
+  const [myReviews, setMyReviews] = useState<Review[]>([]);
 
   useEffect(() => {
     // Get user profile from localStorage
     const usersJson = localStorage.getItem('users');
     const users = usersJson ? JSON.parse(usersJson) : [];
-    
+
     const foundUser = users.find((u: any) => u.email === email);
-    
+
     if (foundUser) {
       const { password, ...userProfile } = foundUser;
       setProfile(userProfile);
+    }
+  }, [email]);
+
+  useEffect(() => {
+    // Get user reviews from localStorage
+    const reviewsJson = localStorage.getItem('reviews');
+    const allReviews = reviewsJson ? JSON.parse(reviewsJson) : [];
+
+    const userReviews = allReviews.filter((r: any) => r.reviewedUserEmail === email);
+    setReviews(userReviews);
+
+    // Get reviews written by current user (if viewing own profile)
+    if (currentUser?.email === email) {
+      const reviewsByUser = allReviews.filter((r: any) => r.reviewerName === currentUser.name);
+      setMyReviews(reviewsByUser);
+    }
+  }, [email, currentUser]);
+
+  useEffect(() => {
+    // Get user's listings
+    if (email) {
+      const userListingsJson = localStorage.getItem('userListings');
+      const allUserListings: Listing[] = userListingsJson ? JSON.parse(userListingsJson) : [];
+      const filtered = allUserListings.filter(l => l.listerEmail === email);
+      setUserListings(filtered);
     }
   }, [email]);
 
@@ -74,6 +127,58 @@ export function ProfilePage() {
       setReportReason('');
       setReportDescription('');
     }, 2000);
+  };
+
+  const handleDeleteReview = () => {
+    if (!deleteReviewId) return;
+
+    const reviewsJson = localStorage.getItem('reviews');
+    if (!reviewsJson) return;
+
+    const allReviews = JSON.parse(reviewsJson);
+    const updatedReviews = allReviews.filter((r: any) => r.id !== deleteReviewId);
+    localStorage.setItem('reviews', JSON.stringify(updatedReviews));
+
+    // Update the reviewed user's rating
+    const deletedReview = allReviews.find((r: any) => r.id === deleteReviewId);
+    if (deletedReview) {
+      const usersJson = localStorage.getItem('users');
+      const users = usersJson ? JSON.parse(usersJson) : [];
+
+      const remainingReviewsForUser = updatedReviews.filter(
+        (r: any) => r.reviewedUserEmail === deletedReview.reviewedUserEmail
+      );
+
+      const totalReviews = remainingReviewsForUser.length;
+      const newRating = totalReviews > 0
+        ? remainingReviewsForUser.reduce((sum: number, r: any) => sum + r.rating, 0) / totalReviews
+        : 5.0;
+
+      const updatedUsers = users.map((u: any) => {
+        if (u.email === deletedReview.reviewedUserEmail) {
+          return {
+            ...u,
+            rating: newRating,
+            totalReviews,
+          };
+        }
+        return u;
+      });
+
+      localStorage.setItem('users', JSON.stringify(updatedUsers));
+    }
+
+    // Refresh reviews
+    const userReviews = updatedReviews.filter((r: any) => r.reviewedUserEmail === email);
+    setReviews(userReviews);
+
+    if (currentUser?.email === email) {
+      const reviewsByUser = updatedReviews.filter((r: any) => r.reviewerName === currentUser.name);
+      setMyReviews(reviewsByUser);
+    }
+
+    toast.success('Review deleted successfully');
+    setDeleteReviewId(null);
   };
 
   const renderStars = (rating: number) => {
@@ -133,13 +238,7 @@ export function ProfilePage() {
         <div className="max-w-[1600px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
-              <div className="relative">
-                <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-white rounded-full absolute top-2 left-2"></div>
-                  <div className="w-2 h-2 bg-white rounded-full absolute top-2 right-2"></div>
-                  <div className="w-2 h-2 bg-white rounded-full absolute bottom-2 left-3"></div>
-                </div>
-              </div>
+              <SiteLogo />
               <h1 className="text-2xl font-bold text-white">Common Ground</h1>
             </div>
           </div>
@@ -216,16 +315,6 @@ export function ProfilePage() {
                     <p className="font-medium">{profile.email}</p>
                   </div>
                 </div>
-
-                {profile.phoneNumber && (
-                  <div className="flex items-center gap-3 text-gray-600">
-                    <Phone className="w-5 h-5 text-red-600" />
-                    <div>
-                      <p className="text-sm text-gray-500">Phone</p>
-                      <p className="font-medium">{profile.phoneNumber}</p>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -234,6 +323,125 @@ export function ProfilePage() {
               <div className="border-t pt-6">
                 <h3 className="font-semibold text-gray-900 mb-2">About</h3>
                 <p className="text-gray-600 leading-relaxed">{profile.bio}</p>
+              </div>
+            )}
+
+            {/* User's Listings (only show for own profile) */}
+            {isOwnProfile && userListings.length > 0 && (
+              <div className="border-t pt-6">
+                <h3 className="font-semibold text-gray-900 mb-4">My Listings</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {userListings.map((listing) => (
+                    <div
+                      key={listing.id}
+                      className="bg-gray-50 rounded-lg p-4 flex items-center gap-4 hover:bg-gray-100 transition-colors"
+                    >
+                      <div
+                        className="w-20 h-20 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0 cursor-pointer"
+                        onClick={() => navigate(`/listing/${listing.id}`)}
+                      >
+                        <img
+                          src={listing.image}
+                          alt={listing.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4
+                          className="font-medium text-gray-900 truncate cursor-pointer hover:text-red-600"
+                          onClick={() => navigate(`/listing/${listing.id}`)}
+                        >
+                          {listing.title}
+                        </h4>
+                        <p className="text-lg font-bold text-red-600">${listing.price}</p>
+                        <p className="text-sm text-gray-500">{listing.condition}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Reviews Received */}
+            {reviews.length > 0 && (
+              <div className="border-t pt-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Reviews Received</h3>
+                <div className="space-y-4">
+                  {reviews.map((review) => (
+                    <div key={review.id} className="bg-gray-100 p-4 rounded-md">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <UserIcon className="w-5 h-5 text-gray-500" />
+                          <span className="ml-2 font-medium text-gray-900">{review.reviewerName}</span>
+                        </div>
+                        <div className="flex items-center">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-5 h-5 ${
+                                star <= Math.floor(review.rating)
+                                  ? 'fill-yellow-400 text-yellow-400'
+                                  : star - 0.5 <= review.rating
+                                  ? 'fill-yellow-400 text-yellow-400 opacity-50'
+                                  : 'text-gray-300'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="mt-2 text-gray-600 leading-relaxed">{review.comment}</p>
+                      <p className="mt-1 text-sm text-gray-500">Date: {review.date}</p>
+                      {review.listingTitle && (
+                        <p className="mt-1 text-sm text-gray-500">Listing: {review.listingTitle}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Reviews Given (only show for own profile) */}
+            {isOwnProfile && myReviews.length > 0 && (
+              <div className="border-t pt-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Reviews I've Written</h3>
+                <div className="space-y-4">
+                  {myReviews.map((review) => (
+                    <div key={review.id} className="bg-blue-50 p-4 rounded-md">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Package className="w-5 h-5 text-blue-600" />
+                          {review.listingTitle && (
+                            <span className="font-medium text-gray-900">{review.listingTitle}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                className={`w-4 h-4 ${
+                                  star <= Math.floor(review.rating)
+                                    ? 'fill-yellow-400 text-yellow-400'
+                                    : 'text-gray-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeleteReviewId(review.id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-100"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-gray-600 leading-relaxed">{review.comment}</p>
+                      <p className="mt-1 text-sm text-gray-500">Date: {review.date}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -308,6 +516,27 @@ export function ProfilePage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Review Confirmation */}
+      <AlertDialog open={!!deleteReviewId} onOpenChange={() => setDeleteReviewId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Review</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this review? This will update the seller's rating and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteReview}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

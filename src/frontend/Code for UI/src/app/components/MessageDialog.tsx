@@ -11,6 +11,7 @@ import { Textarea } from './ui/textarea';
 import { Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router';
 
 interface MessageDialogProps {
   isOpen: boolean;
@@ -37,6 +38,7 @@ interface Conversation {
 export function MessageDialog({ isOpen, onClose, listerName, listingTitle }: MessageDialogProps) {
   const [message, setMessage] = useState('');
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const handleSend = () => {
     if (message.trim() && user) {
@@ -79,12 +81,12 @@ export function MessageDialog({ isOpen, onClose, listerName, listingTitle }: Mes
       
       // Save conversations
       localStorage.setItem(`conversations_${user.id}`, JSON.stringify(conversations));
-      
-      toast.success(`Message sent to ${listerName}!`, {
-        description: 'Check your chat sidebar to continue the conversation.',
-      });
+
       setMessage('');
       onClose();
+
+      // Navigate to home page and trigger chat sidebar to open
+      navigate('/', { state: { openChat: true, conversationId } });
     }
   };
 

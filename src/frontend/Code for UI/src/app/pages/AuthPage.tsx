@@ -7,6 +7,7 @@ import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { SiteLogo } from '../components/SiteLogo';
 
 export function AuthPage() {
   const navigate = useNavigate();
@@ -23,6 +24,8 @@ export function AuthPage() {
   const [signUpEmail, setSignUpEmail] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
   const [signUpConfirmPassword, setSignUpConfirmPassword] = useState('');
+  const [signUpPhoneNumber, setSignUpPhoneNumber] = useState('');
+  const [signUpAddress, setSignUpAddress] = useState('');
   const [isSigningUp, setIsSigningUp] = useState(false);
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -48,7 +51,7 @@ export function AuthPage() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!signUpName || !signUpEmail || !signUpPassword || !signUpConfirmPassword) {
+    if (!signUpName || !signUpEmail || !signUpPassword || !signUpConfirmPassword || !signUpPhoneNumber || !signUpAddress) {
       toast.error('Please fill in all fields');
       return;
     }
@@ -64,7 +67,7 @@ export function AuthPage() {
     }
     
     setIsSigningUp(true);
-    const success = await signUp(signUpName, signUpEmail, signUpPassword);
+    const success = await signUp(signUpName, signUpEmail, signUpPassword, signUpPhoneNumber, signUpAddress);
     setIsSigningUp(false);
 
     if (success) {
@@ -94,13 +97,7 @@ export function AuthPage() {
         <div className="max-w-[1600px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
-              <div className="relative">
-                <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-white rounded-full absolute top-2 left-2"></div>
-                  <div className="w-2 h-2 bg-white rounded-full absolute top-2 right-2"></div>
-                  <div className="w-2 h-2 bg-white rounded-full absolute bottom-2 left-3"></div>
-                </div>
-              </div>
+              <SiteLogo />
               <h1 className="text-2xl font-bold text-white">Common Ground</h1>
             </div>
 
@@ -211,6 +208,30 @@ export function AuthPage() {
                     placeholder="Confirm your password"
                     value={signUpConfirmPassword}
                     onChange={(e) => setSignUpConfirmPassword(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-phone-number">Phone Number</Label>
+                  <Input
+                    id="signup-phone-number"
+                    type="text"
+                    placeholder="123-456-7890"
+                    value={signUpPhoneNumber}
+                    onChange={(e) => setSignUpPhoneNumber(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-address">Address</Label>
+                  <Input
+                    id="signup-address"
+                    type="text"
+                    placeholder="123 Main St, Anytown, USA"
+                    value={signUpAddress}
+                    onChange={(e) => setSignUpAddress(e.target.value)}
                     required
                   />
                 </div>

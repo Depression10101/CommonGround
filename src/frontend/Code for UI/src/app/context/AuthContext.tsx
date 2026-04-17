@@ -11,12 +11,13 @@ export interface User {
   bio?: string;
   location?: string;
   phoneNumber?: string;
+  address?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   signIn: (email: string, password: string) => Promise<boolean>;
-  signUp: (name: string, email: string, password: string) => Promise<boolean>;
+  signUp: (name: string, email: string, password: string, phoneNumber: string, address: string) => Promise<boolean>;
   signOut: () => void;
   isAuthenticated: boolean;
 }
@@ -34,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const signUp = async (name: string, email: string, password: string): Promise<boolean> => {
+  const signUp = async (name: string, email: string, password: string, phoneNumber: string, address: string): Promise<boolean> => {
     // Get existing users
     const usersJson = localStorage.getItem('users');
     const users = usersJson ? JSON.parse(usersJson) : [];
@@ -54,7 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       totalReviews: 0,
       bio: '',
       location: 'Houston, TX',
-      phoneNumber: '',
+      phoneNumber,
+      address,
       password, // In production, this would be hashed
     };
 

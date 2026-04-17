@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -9,30 +9,63 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { Listing } from '../types';
+import { listings } from '../data/listings';
+import { SiteLogo } from '../components/SiteLogo';
 
-export function CreateListingPage() {
+export function EditListingPage() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   const { user, isAuthenticated } = useAuth();
 
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('');
   const [condition, setCondition] = useState('');
-  const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [listing, setListing] = useState<Listing | null>(null);
 
-  // Redirect if not authenticated
-  if (!isAuthenticated) {
-    navigate('/auth');
-    return null;
-  }
+  // Get listing
+  const allListings = useMemo(() => {
+    const userListingsJson = localStorage.getItem('userListings');
+    const userListings: Listing[] = userListingsJson ? JSON.parse(userListingsJson) : [];
+    return [...listings, ...userListings];
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/auth');
+      return;
+    }
+
+    const foundListing = allListings.find((l) => l.id === Number(id));
+    if (!foundListing) {
+      toast.error('Listing not found');
+      navigate('/');
+      return;
+    }
+
+    // Check if user owns this listing
+    if (foundListing.listerEmail !== user?.email) {
+      toast.error('You can only edit your own listings');
+      navigate('/');
+      return;
+    }
+
+    setListing(foundListing);
+    setTitle(foundListing.title);
+    setPrice(foundListing.price.toString());
+    setCategory(foundListing.category);
+    setCondition(foundListing.condition);
+    setDescription(foundListing.description);
+    setImageUrl(foundListing.images[0] || '');
+  }, [id, isAuthenticated, user, navigate, allListings]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!title || !price || !category || !condition || !location || !description) {
+    if (!title || !price || !category || !condition || !description) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -45,35 +78,43 @@ export function CreateListingPage() {
 
     setIsSubmitting(true);
 
-    // Create new listing
-    const newListing: Listing = {
-      id: Date.now(),
+    // Update listing
+    const updatedListing: Listing = {
+      ...listing!,
       title,
       price: priceNum,
+      location: listing!.location || 'Houston, TX', // Preserve location or set default
       category,
       condition: condition as 'New' | 'Like New' | 'Good' | 'Fair',
-      location,
       description,
-      image: imageUrl || 'https://images.unsplash.com/photo-1612015900986-4c4d017d1648?w=400',
-      images: [imageUrl || 'https://images.unsplash.com/photo-1612015900986-4c4d017d1648?w=800'],
-      listerName: user!.name,
-      listerEmail: user!.email,
-      listerJoinDate: user!.joinDate,
-      postedDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      image: imageUrl || listing!.image,
+      images: [imageUrl || listing!.images[0]],
     };
 
-    // Get existing listings from localStorage
-    const existingListingsJson = localStorage.getItem('userListings');
-    const existingListings = existingListingsJson ? JSON.parse(existingListingsJson) : [];
+    // Get existing user listings from localStorage
+    const userListingsJson = localStorage.getItem('userListings');
+    const userListings: Listing[] = userListingsJson ? JSON.parse(userListingsJson) : [];
 
-    // Add new listing
-    existingListings.push(newListing);
-    localStorage.setItem('userListings', JSON.stringify(existingListings));
+    // Update the listing
+    const updatedListings = userListings.map(l =>
+      l.id === listing!.id ? updatedListing : l
+    );
+    localStorage.setItem('userListings', JSON.stringify(updatedListings));
 
     setIsSubmitting(false);
-    toast.success('Listing created successfully!');
-    navigate('/');
+    toast.success('Listing updated successfully!');
+    navigate(`/listing/${id}`);
   };
+
+  if (!listing) {
+    return (
+      <div className="min-h-screen bg-red-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Loading...</h2>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-red-50 relative overflow-x-hidden">
@@ -94,22 +135,16 @@ export function CreateListingPage() {
         <div className="max-w-[1600px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
-              <div className="relative">
-                <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-white rounded-full absolute top-2 left-2"></div>
-                  <div className="w-2 h-2 bg-white rounded-full absolute top-2 right-2"></div>
-                  <div className="w-2 h-2 bg-white rounded-full absolute bottom-2 left-3"></div>
-                </div>
-              </div>
+              <SiteLogo />
               <h1 className="text-2xl font-bold text-white">Common Ground</h1>
             </div>
 
-            <button 
-              onClick={() => navigate('/')}
+            <button
+              onClick={() => navigate(`/listing/${id}`)}
               className="flex items-center space-x-2 px-5 py-2.5 bg-black text-white hover:bg-gray-900 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span>Back to Listings</span>
+              <span>Cancel</span>
             </button>
           </div>
         </div>
@@ -118,8 +153,8 @@ export function CreateListingPage() {
       {/* Main Content */}
       <div className="max-w-2xl mx-auto px-6 py-12 relative z-1">
         <div className="bg-white rounded-lg shadow-lg p-8 border border-gray-200">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Create New Listing</h2>
-          <p className="text-gray-600 mb-8">Fill in the details to post your item</p>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Edit Listing</h2>
+          <p className="text-gray-600 mb-8">Update your listing details</p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
@@ -146,6 +181,7 @@ export function CreateListingPage() {
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   required
+                  className="[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
               </div>
 
@@ -180,22 +216,6 @@ export function CreateListingPage() {
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="location">Location *</Label>
-                <Select value={location} onValueChange={setLocation} required>
-                  <SelectTrigger id="location">
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Downtown Houston, TX">Downtown Houston, TX</SelectItem>
-                    <SelectItem value="The Woodlands, TX">The Woodlands, TX</SelectItem>
-                    <SelectItem value="Sugar Land, TX">Sugar Land, TX</SelectItem>
-                    <SelectItem value="Katy, TX">Katy, TX</SelectItem>
-                    <SelectItem value="Pearland, TX">Pearland, TX</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
             <div className="space-y-2">
@@ -207,7 +227,7 @@ export function CreateListingPage() {
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
               />
-              <p className="text-sm text-gray-500">Leave blank to use a default image</p>
+              <p className="text-sm text-gray-500">Leave blank to keep current image</p>
             </div>
 
             <div className="space-y-2">
@@ -223,17 +243,17 @@ export function CreateListingPage() {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Creating Listing...' : 'Create Listing'}
+                {isSubmitting ? 'Updating Listing...' : 'Update Listing'}
               </Button>
-              <Button 
-                type="button" 
+              <Button
+                type="button"
                 variant="outline"
-                onClick={() => navigate('/')}
+                onClick={() => navigate(`/listing/${id}`)}
                 className="flex-1"
               >
                 Cancel

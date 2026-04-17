@@ -1,15 +1,17 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
-import { ArrowLeft, Heart, MapPin, Calendar, User as UserIcon, MessageCircle, Star } from 'lucide-react';
+import { ArrowLeft, Heart, MapPin, Calendar, User as UserIcon, MessageCircle, Star, Edit2, Trash2 } from 'lucide-react';
 import { listings } from '../data/listings';
 import { MessageDialog } from '../components/MessageDialog';
 import { Button } from '../components/ui/button';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { Listing } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { SiteLogo } from '../components/SiteLogo';
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -24,6 +26,7 @@ export function ListingDetailPage() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
   const [showLoginAlert, setShowLoginAlert] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Combine default listings with user-created listings
   const allListings = useMemo(() => {
@@ -81,6 +84,16 @@ export function ListingDetailPage() {
     }
   };
 
+  const handleDeleteListing = () => {
+    const userListingsJson = localStorage.getItem('userListings');
+    const userListings: Listing[] = userListingsJson ? JSON.parse(userListingsJson) : [];
+    const updatedListings = userListings.filter(l => l.id !== listing.id);
+    localStorage.setItem('userListings', JSON.stringify(updatedListings));
+    navigate('/');
+  };
+
+  const isOwnListing = user?.email === listing?.listerEmail;
+
   return (
     <div className="min-h-screen bg-red-50">
       {/* Background Pattern */}
@@ -100,13 +113,7 @@ export function ListingDetailPage() {
         <div className="max-w-[1600px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
-              <div className="relative">
-                <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-white rounded-full absolute top-2 left-2"></div>
-                  <div className="w-2 h-2 bg-white rounded-full absolute top-2 right-2"></div>
-                  <div className="w-2 h-2 bg-white rounded-full absolute bottom-2 left-3"></div>
-                </div>
-              </div>
+              <SiteLogo />
               <h1 className="text-2xl font-bold text-white">Common Ground</h1>
             </div>
 
@@ -185,10 +192,6 @@ export function ListingDetailPage() {
 
               <div className="flex items-center space-x-4 text-sm text-gray-600">
                 <div className="flex items-center space-x-1">
-                  <MapPin className="w-4 h-4" />
-                  <span>{listing.location}</span>
-                </div>
-                <div className="flex items-center space-x-1">
                   <Calendar className="w-4 h-4" />
                   <span>Posted {listing.postedDate}</span>
                 </div>
@@ -236,36 +239,39 @@ export function ListingDetailPage() {
                     </Button>
                   </Link>
                 )}
-                
-                <Button
-                  onClick={handleMessageClick}
-                  className="w-full bg-red-600 hover:bg-red-700"
-                  size="lg"
-                >
-                  <MessageCircle className="w-5 h-5 mr-2" />
-                  Message Seller
-                </Button>
+
+                {isOwnListing ? (
+                  <div className="space-y-3">
+                    <Button
+                      onClick={() => navigate(`/edit-listing/${listing.id}`)}
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                      size="lg"
+                    >
+                      <Edit2 className="w-5 h-5 mr-2" />
+                      Edit Listing
+                    </Button>
+                    <Button
+                      onClick={() => setShowDeleteDialog(true)}
+                      variant="outline"
+                      className="w-full border-red-600 text-red-600 hover:bg-red-50"
+                      size="lg"
+                    >
+                      <Trash2 className="w-5 h-5 mr-2" />
+                      Delete Listing
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={handleMessageClick}
+                    className="w-full bg-red-600 hover:bg-red-700"
+                    size="lg"
+                  >
+                    <MessageCircle className="w-5 h-5 mr-2" />
+                    Message Seller
+                  </Button>
+                )}
               </div>
             </div>
-          </div>
-
-          {/* Location Map Section */}
-          <div className="border-t p-8">
-            <h3 className="font-semibold text-gray-900 mb-4">Location</h3>
-            <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-              <iframe
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                loading="lazy"
-                allowFullScreen
-                src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(listing.location + ', Houston, TX')}&zoom=13`}
-              ></iframe>
-            </div>
-            <p className="text-sm text-gray-500 mt-2">
-              <MapPin className="w-4 h-4 inline mr-1" />
-              {listing.location}
-            </p>
           </div>
         </div>
       </div>
@@ -293,6 +299,26 @@ export function ListingDetailPage() {
               }}
             >
               Sign In
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Listing</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this listing? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteListing}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
