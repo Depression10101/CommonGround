@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Star, MapPin, Calendar, Mail, Phone, Flag, User as UserIcon, Trash2, Package } from 'lucide-react';
+import { ArrowLeft, Star, MapPin, Calendar, Mail, Phone, Flag, User as UserIcon, Trash2, Package, Edit } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useAuth } from '../context/AuthContext';
@@ -53,7 +53,7 @@ interface Review {
 export function ProfilePage() {
   const { email } = useParams<{ email: string }>();
   const navigate = useNavigate();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, signOut } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
@@ -63,6 +63,8 @@ export function ProfilePage() {
   const [deleteReviewId, setDeleteReviewId] = useState<string | null>(null);
   const [userListings, setUserListings] = useState<Listing[]>([]);
   const [myReviews, setMyReviews] = useState<Review[]>([]);
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
+  const [showSecondDeleteDialog, setShowSecondDeleteDialog] = useState(false);
 
   useEffect(() => {
     // Get user profile from localStorage
@@ -181,6 +183,61 @@ export function ProfilePage() {
     setDeleteReviewId(null);
   };
 
+  const handleFirstDeleteConfirm = () => {
+    setShowDeleteAccountDialog(false);
+    setShowSecondDeleteDialog(true);
+  };
+
+  const handleFinalDeleteAccount = () => {
+    if (!currentUser || !profile) return;
+
+    // Delete user account
+    const usersJson = localStorage.getItem('users');
+    const users = usersJson ? JSON.parse(usersJson) : [];
+    const updatedUsers = users.filter((u: any) => u.email !== profile.email);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+
+    // Delete user's listings
+    const userListingsJson = localStorage.getItem('userListings');
+    if (userListingsJson) {
+      const listings = JSON.parse(userListingsJson);
+      const updatedListings = listings.filter((l: any) => l.listerEmail !== profile.email);
+      localStorage.setItem('userListings', JSON.stringify(updatedListings));
+    }
+
+    // Delete user's reviews
+    const reviewsJson = localStorage.getItem('reviews');
+    if (reviewsJson) {
+      const allReviews = JSON.parse(reviewsJson);
+      const updatedReviews = allReviews.filter((r: any) => r.reviewerName !== profile.name && r.reviewedUserEmail !== profile.email);
+      localStorage.setItem('reviews', JSON.stringify(updatedReviews));
+    }
+
+    // Delete user's conversations
+    const conversationsJson = localStorage.getItem('conversations');
+    if (conversationsJson) {
+      const conversations = JSON.parse(conversationsJson);
+      const updatedConversations = conversations.filter(
+        (c: any) => c.buyerEmail !== profile.email && c.sellerEmail !== profile.email
+      );
+      localStorage.setItem('conversations', JSON.stringify(updatedConversations));
+    }
+
+    // Delete user's transactions
+    const transactionsJson = localStorage.getItem('transactions');
+    if (transactionsJson) {
+      const transactions = JSON.parse(transactionsJson);
+      const updatedTransactions = transactions.filter(
+        (t: any) => t.buyerEmail !== profile.email && t.sellerEmail !== profile.email
+      );
+      localStorage.setItem('transactions', JSON.stringify(updatedTransactions));
+    }
+
+    toast.success('Account deleted successfully');
+    signOut();
+    navigate('/');
+  };
+
   const renderStars = (rating: number) => {
     return (
       <div className="flex items-center gap-1">
@@ -223,14 +280,11 @@ export function ProfilePage() {
     <div className="min-h-screen bg-red-50">
       {/* Background Pattern */}
       <div className="fixed inset-0 pointer-events-none opacity-5 z-0">
-        <div className="absolute top-20 left-1/4 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute top-40 right-1/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute top-60 left-1/2 w-30 h-30 bg-black rounded-full"></div>
-        <div className="absolute top-96 right-1/4 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute bottom-60 left-1/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute bottom-40 right-1/2 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute top-1/3 left-2/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute bottom-1/3 right-2/3 w-30 h-30 bg-black rounded-full"></div>
+        <div className="absolute top-40 left-1/4 w-24 h-24 bg-black rounded-full"></div>
+        <div className="absolute top-96 right-1/3 w-18 h-18 bg-black rounded-full"></div>
+        <div className="absolute top-[600px] left-1/2 w-30 h-30 bg-black rounded-full"></div>
+        <div className="absolute bottom-80 right-1/4 w-24 h-24 bg-black rounded-full"></div>
+        <div className="absolute bottom-40 left-1/3 w-18 h-18 bg-black rounded-full"></div>
       </div>
 
       {/* Header */}
@@ -248,11 +302,11 @@ export function ProfilePage() {
       {/* Main Content */}
       <div className="max-w-[1000px] mx-auto px-6 py-8 relative z-1">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/')}
           className="flex items-center space-x-2 text-gray-700 hover:text-red-600 mb-6 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span>Back</span>
+          <span>Back to Listings</span>
         </button>
 
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -271,7 +325,26 @@ export function ProfilePage() {
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">{profile.name}</h1>
                     {renderStars(profile.rating || 5.0)}
                   </div>
-                  {!isOwnProfile && currentUser && (
+                  {isOwnProfile ? (
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => navigate('/edit-profile')}
+                        variant="outline"
+                        className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit Profile
+                      </Button>
+                      <Button
+                        onClick={() => setShowDeleteAccountDialog(true)}
+                        variant="outline"
+                        className="border-red-600 text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Account
+                      </Button>
+                    </div>
+                  ) : currentUser && (
                     <Button
                       onClick={() => setIsReportDialogOpen(true)}
                       variant="outline"
@@ -533,6 +606,48 @@ export function ProfilePage() {
               className="bg-red-600 hover:bg-red-700"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* First Delete Account Confirmation */}
+      <AlertDialog open={showDeleteAccountDialog} onOpenChange={setShowDeleteAccountDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete your account? This will permanently remove all your data including listings, reviews, and messages.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleFirstDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Second Delete Account Confirmation */}
+      <AlertDialog open={showSecondDeleteDialog} onOpenChange={setShowSecondDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. Your account and all associated data will be permanently deleted. You will be immediately logged out.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleFinalDeleteAccount}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Yes, Delete My Account
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -18,7 +18,6 @@ export interface FilterState {
   categories: string[];
   priceRanges: string[];
   conditions: string[];
-  locations: string[];
 }
 
 export interface UserProfile {

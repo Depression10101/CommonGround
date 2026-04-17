@@ -5,10 +5,12 @@ import { AuthPage } from './pages/AuthPage';
 import { CreateListingPage } from './pages/CreateListingPage';
 import { EditListingPage } from './pages/EditListingPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { EditProfilePage } from './pages/EditProfilePage';
 import { TransactionPage } from './pages/TransactionPage';
 import { TransactionConfirmPage } from './pages/TransactionConfirmPage';
 import { PendingTransactionsPage } from './pages/PendingTransactionsPage';
 import { HelpPage } from './pages/HelpPage';
+import { AdminPage } from './pages/AdminPage';
 
 export const router = createBrowserRouter([
   {
@@ -36,6 +38,10 @@ export const router = createBrowserRouter([
     Component: ProfilePage,
   },
   {
+    path: '/edit-profile',
+    Component: EditProfilePage,
+  },
+  {
     path: '/transaction',
     Component: TransactionPage,
   },
@@ -50,5 +56,9 @@ export const router = createBrowserRouter([
   {
     path: '/help',
     Component: HelpPage,
+  },
+  {
+    path: '/admin',
+    Component: AdminPage,
   },
 ]);

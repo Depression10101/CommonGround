@@ -143,6 +143,18 @@ export const defaultUsers = [
     location: 'Houston, TX',
     phoneNumber: '',
     password: 'demo123'
+  },
+  {
+    id: 'admin',
+    email: 'admin@email.com',
+    name: 'Admin',
+    joinDate: 'January 2023',
+    rating: 5.0,
+    totalReviews: 0,
+    bio: 'Common Ground Administrator',
+    location: 'Houston, TX',
+    phoneNumber: '',
+    password: 'admin123'
   }
 ];
 

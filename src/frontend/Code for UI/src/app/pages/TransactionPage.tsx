@@ -14,8 +14,8 @@ export function TransactionPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  
-  const { sellerName, listingTitle, conversationId } = location.state || {};
+
+  const { sellerName, sellerEmail, listingTitle, conversationId } = location.state || {};
   
   const [agreedPrice, setAgreedPrice] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
@@ -27,6 +27,20 @@ export function TransactionPage() {
     // Redirect if not authenticated or no state
     if (!user || !sellerName) {
       navigate('/');
+      return;
+    }
+
+    // Prevent admin and banned users from purchasing
+    if (user.email === 'admin@email.com') {
+      toast.error('Admin accounts cannot purchase items');
+      navigate('/');
+      return;
+    }
+
+    if (user.bannedFromPurchasing) {
+      toast.error('Your account is restricted from purchasing');
+      navigate('/');
+      return;
     }
   }, [user, sellerName, navigate]);
 
@@ -51,6 +65,9 @@ export function TransactionPage() {
       const transaction = {
         id: Date.now().toString(),
         userId: user!.id,
+        buyerEmail: user!.email,
+        buyerName: user!.name,
+        sellerEmail,
         sellerName,
         listingTitle,
         agreedPrice: price,
@@ -96,14 +113,11 @@ export function TransactionPage() {
     <div className="min-h-screen bg-red-50">
       {/* Background Pattern */}
       <div className="fixed inset-0 pointer-events-none opacity-5 z-0">
-        <div className="absolute top-20 left-1/4 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute top-40 right-1/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute top-60 left-1/2 w-30 h-30 bg-black rounded-full"></div>
-        <div className="absolute top-96 right-1/4 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute bottom-60 left-1/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute bottom-40 right-1/2 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute top-1/3 left-2/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute bottom-1/3 right-2/3 w-30 h-30 bg-black rounded-full"></div>
+        <div className="absolute top-40 left-1/4 w-24 h-24 bg-black rounded-full"></div>
+        <div className="absolute top-96 right-1/3 w-18 h-18 bg-black rounded-full"></div>
+        <div className="absolute top-[600px] left-1/2 w-30 h-30 bg-black rounded-full"></div>
+        <div className="absolute bottom-80 right-1/4 w-24 h-24 bg-black rounded-full"></div>
+        <div className="absolute bottom-40 left-1/3 w-18 h-18 bg-black rounded-full"></div>
       </div>
 
       {/* Header */}

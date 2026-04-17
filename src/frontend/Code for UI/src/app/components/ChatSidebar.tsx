@@ -1,20 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { MessageCircle, X, Send, User, ShoppingCart } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router';
+import { toast } from 'sonner';
 
 interface Message {
   id: string;
   text: string;
-  sender: 'user' | 'seller';
+  senderEmail: string;
+  senderName: string;
   timestamp: string;
+  readBy: string[]; // Array of user emails who have read this message
 }
 
 interface Conversation {
   id: string;
+  buyerEmail: string;
+  buyerName: string;
+  sellerEmail: string;
   sellerName: string;
   listingTitle: string;
   messages: Message[];
@@ -29,10 +35,34 @@ export function ChatSidebar() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
+  const previousMessageCount = useRef<number>(0);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const selectedConv = useMemo(() =>
+    conversations.find(c => c.id === selectedConversation),
+    [conversations, selectedConversation]
+  );
 
   useEffect(() => {
     loadConversations();
   }, [user]);
+
+  // Poll for new messages every 3 seconds
+  useEffect(() => {
+    if (!user) return;
+
+    const interval = setInterval(() => {
+      loadConversations();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [selectedConv?.messages]);
 
   useEffect(() => {
     // Open chat if coming from message dialog
@@ -44,35 +74,85 @@ export function ChatSidebar() {
     }
   }, [location, navigate]);
 
+  useEffect(() => {
+    // Calculate unread messages from other party
+    const unread = conversations.reduce((count, conv) => {
+      const unreadInConv = conv.messages.filter(
+        m => m.senderEmail !== user?.email && !m.readBy.includes(user?.email || '')
+      ).length;
+      return count + unreadInConv;
+    }, 0);
+
+    // Show notification if new unread messages arrived
+    if (unread > previousMessageCount.current && previousMessageCount.current > 0) {
+      toast.info('You have a new message!', {
+        duration: 3000,
+      });
+    }
+
+    previousMessageCount.current = unread;
+    setUnreadCount(unread);
+  }, [conversations, user]);
+
   const loadConversations = () => {
     if (!user) return;
-    const conversationsJson = localStorage.getItem(`conversations_${user.id}`);
+
+    // Load all conversations
+    const conversationsJson = localStorage.getItem('conversations');
     if (conversationsJson) {
-      const loaded = JSON.parse(conversationsJson);
-      setConversations(loaded);
+      const allConversations: Conversation[] = JSON.parse(conversationsJson);
+
+      // Filter conversations where user is buyer or seller
+      const userConversations = allConversations.filter(
+        conv => conv.buyerEmail === user.email || conv.sellerEmail === user.email
+      );
+
+      setConversations(userConversations);
+    } else {
+      setConversations([]);
     }
   };
 
   const saveConversations = (updated: Conversation[]) => {
     if (!user) return;
-    localStorage.setItem(`conversations_${user.id}`, JSON.stringify(updated));
+
+    // Load all conversations
+    const conversationsJson = localStorage.getItem('conversations');
+    const allConversations: Conversation[] = conversationsJson ? JSON.parse(conversationsJson) : [];
+
+    // Update the conversations
+    const updatedAll = allConversations.map(conv => {
+      const updatedConv = updated.find(u => u.id === conv.id);
+      return updatedConv || conv;
+    });
+
+    // Add new conversations
+    updated.forEach(conv => {
+      if (!allConversations.find(c => c.id === conv.id)) {
+        updatedAll.push(conv);
+      }
+    });
+
+    localStorage.setItem('conversations', JSON.stringify(updatedAll));
     setConversations(updated);
   };
 
   const handleSendMessage = () => {
-    if (!newMessage.trim() || !selectedConversation) return;
+    if (!newMessage.trim() || !selectedConversation || !user) return;
 
     const updated = conversations.map(conv => {
       if (conv.id === selectedConversation) {
         const message: Message = {
           id: Date.now().toString(),
           text: newMessage,
-          sender: 'user',
-          timestamp: new Date().toLocaleTimeString('en-US', { 
-            hour: 'numeric', 
+          senderEmail: user.email,
+          senderName: user.name,
+          timestamp: new Date().toLocaleTimeString('en-US', {
+            hour: 'numeric',
             minute: '2-digit',
-            hour12: true 
+            hour12: true
           }),
+          readBy: [user.email], // Sender has read their own message
         };
         return {
           ...conv,
@@ -89,19 +169,18 @@ export function ChatSidebar() {
 
   const handleConfirmPurchase = () => {
     if (!selectedConv) return;
-    
+
     // Navigate to transaction page with conversation details
     navigate('/transaction', {
       state: {
         sellerName: selectedConv.sellerName,
+        sellerEmail: selectedConv.sellerEmail,
         listingTitle: selectedConv.listingTitle,
         conversationId: selectedConv.id
       }
     });
     setIsOpen(false);
   };
-
-  const selectedConv = conversations.find(c => c.id === selectedConversation);
 
   return (
     <>
@@ -111,9 +190,9 @@ export function ChatSidebar() {
         className="fixed bottom-8 left-8 bg-red-600 hover:bg-red-700 text-white rounded-full p-4 shadow-lg transition-all hover:shadow-xl z-50 flex items-center space-x-2"
       >
         <MessageCircle className="w-6 h-6" />
-        {conversations.length > 0 && (
+        {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-black text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
-            {conversations.length}
+            {unreadCount}
           </span>
         )}
       </button>
@@ -152,30 +231,60 @@ export function ChatSidebar() {
                 ) : (
                   <ScrollArea className="h-full">
                     <div className="divide-y divide-gray-200">
-                      {conversations.map((conv) => (
-                        <button
-                          key={conv.id}
-                          onClick={() => setSelectedConversation(conv.id)}
-                          className="w-full p-4 hover:bg-gray-50 transition-colors text-left"
-                        >
-                          <div className="flex items-start space-x-3">
-                            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                              <User className="w-5 h-5 text-red-600" />
+                      {conversations.map((conv) => {
+                        const otherPartyName = conv.buyerEmail === user?.email ? conv.sellerName : conv.buyerName;
+                        const unreadInConv = conv.messages.filter(
+                          m => m.senderEmail !== user?.email && !m.readBy.includes(user?.email || '')
+                        ).length;
+
+                        return (
+                          <button
+                            key={conv.id}
+                            onClick={() => {
+                              setSelectedConversation(conv.id);
+                              // Mark messages as read when opening conversation
+                              const updated = conversations.map(c => {
+                                if (c.id === conv.id) {
+                                  return {
+                                    ...c,
+                                    messages: c.messages.map(m => ({
+                                      ...m,
+                                      readBy: m.readBy.includes(user?.email || '') ? m.readBy : [...m.readBy, user?.email || '']
+                                    }))
+                                  };
+                                }
+                                return c;
+                              });
+                              saveConversations(updated);
+                            }}
+                            className="w-full p-4 hover:bg-gray-50 transition-colors text-left relative"
+                          >
+                            <div className="flex items-start space-x-3">
+                              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <User className="w-5 h-5 text-red-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <p className="font-semibold text-gray-900 truncate">
+                                    {otherPartyName}
+                                  </p>
+                                  {unreadInConv > 0 && (
+                                    <span className="bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
+                                      {unreadInConv}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-600 truncate">
+                                  {conv.listingTitle}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {conv.messages.length} message{conv.messages.length !== 1 ? 's' : ''}
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-900 truncate">
-                                {conv.sellerName}
-                              </p>
-                              <p className="text-sm text-gray-600 truncate">
-                                {conv.listingTitle}
-                              </p>
-                              <p className="text-xs text-gray-500 mt-1">
-                                {conv.messages.length} message{conv.messages.length !== 1 ? 's' : ''}
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
+                          </button>
+                        );
+                      })}
                     </div>
                   </ScrollArea>
                 )}
@@ -197,7 +306,7 @@ export function ChatSidebar() {
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900">
-                        {selectedConv?.sellerName}
+                        {selectedConv?.buyerEmail === user?.email ? selectedConv?.sellerName : selectedConv?.buyerName}
                       </p>
                       <p className="text-sm text-gray-600 truncate">
                         {selectedConv?.listingTitle}
@@ -209,46 +318,54 @@ export function ChatSidebar() {
                 {/* Messages */}
                 <ScrollArea className="flex-1 p-4">
                   <div className="space-y-3">
-                    {selectedConv?.messages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`flex ${
-                          message.sender === 'user' ? 'justify-end' : 'justify-start'
-                        }`}
-                      >
+                    {selectedConv?.messages.map((message) => {
+                      const isMyMessage = message.senderEmail === user?.email;
+                      return (
                         <div
-                          className={`max-w-[75%] rounded-lg px-4 py-2 ${
-                            message.sender === 'user'
-                              ? 'bg-red-600 text-white'
-                              : 'bg-gray-300 text-gray-900'
+                          key={message.id}
+                          className={`flex ${
+                            isMyMessage ? 'justify-end' : 'justify-start'
                           }`}
                         >
-                          <p className="text-sm">{message.text}</p>
-                          <p
-                            className={`text-xs mt-1 ${
-                              message.sender === 'user'
-                                ? 'text-red-200'
-                                : 'text-gray-600'
+                          <div
+                            className={`max-w-[75%] rounded-lg px-4 py-2 ${
+                              isMyMessage
+                                ? 'bg-red-600 text-white'
+                                : 'bg-gray-300 text-gray-900'
                             }`}
                           >
-                            {message.timestamp}
-                          </p>
+                            <p className="text-sm">{message.text}</p>
+                            <p
+                              className={`text-xs mt-1 ${
+                                isMyMessage
+                                  ? 'text-red-200'
+                                  : 'text-gray-600'
+                              }`}
+                            >
+                              {message.timestamp}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
+                    <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
 
-                {/* Confirm Purchase Button */}
-                <div className="p-4 border-t border-gray-200">
-                  <Button
-                    onClick={handleConfirmPurchase}
-                    className="w-full bg-red-600 hover:bg-red-700"
-                  >
-                    <ShoppingCart className="w-4 h-4 mr-2" />
-                    Confirm Purchase
-                  </Button>
-                </div>
+                {/* Confirm Purchase Button - Only show for buyer, not admins or banned users */}
+                {selectedConv?.buyerEmail === user?.email &&
+                 user?.email !== 'admin@email.com' &&
+                 !user?.bannedFromPurchasing && (
+                  <div className="p-4 border-t border-gray-200">
+                    <Button
+                      onClick={handleConfirmPurchase}
+                      className="w-full bg-red-600 hover:bg-red-700"
+                    >
+                      <ShoppingCart className="w-4 h-4 mr-2" />
+                      Confirm Purchase
+                    </Button>
+                  </div>
+                )}
 
                 {/* Message Input */}
                 <div className="p-4 border-t border-gray-200">
