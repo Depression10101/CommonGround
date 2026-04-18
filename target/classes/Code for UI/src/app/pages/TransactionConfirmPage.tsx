@@ -24,7 +24,7 @@ export function TransactionConfirmPage() {
   const { user } = useAuth();
   
   const transactionState = location.state || {};
-  const { transactionId, sellerName, listingTitle, agreedPrice, paymentMethod, meetupLocation } = transactionState;
+  const { transactionId, sellerName, sellerEmail, buyerName, listingTitle, agreedPrice, paymentMethod, meetupLocation } = transactionState;
   
   const [transaction, setTransaction] = useState<any>(null);
   const [hasConfirmed, setHasConfirmed] = useState(false);
@@ -56,7 +56,10 @@ export function TransactionConfirmPage() {
       if (found) {
         setTransaction(found);
         // Check if current user has already confirmed
-        if (found.userId === user?.id) {
+        const isSeller = found.sellerEmail === user?.email;
+        if (isSeller) {
+          setHasConfirmed(found.sellerConfirmed);
+        } else {
           setHasConfirmed(found.buyerConfirmed);
         }
       }
@@ -69,26 +72,41 @@ export function TransactionConfirmPage() {
     const transactionsJson = localStorage.getItem('transactions');
     if (!transactionsJson) return;
 
+    const isSeller = transaction.sellerEmail === user?.email;
+
     const transactions = JSON.parse(transactionsJson);
     const updatedTransactions = transactions.map((t: any) => {
       if (t.id === transactionId) {
-        // Mark buyer as confirmed (assuming current user is the buyer)
-        return {
-          ...t,
-          buyerConfirmed: true,
-          buyerConfirmTime: new Date().toISOString(),
-        };
+        if (isSeller) {
+          // Mark seller as confirmed
+          return {
+            ...t,
+            sellerConfirmed: true,
+            sellerConfirmTime: new Date().toISOString(),
+          };
+        } else {
+          // Mark buyer as confirmed
+          return {
+            ...t,
+            buyerConfirmed: true,
+            buyerConfirmTime: new Date().toISOString(),
+          };
+        }
       }
       return t;
     });
 
     localStorage.setItem('transactions', JSON.stringify(updatedTransactions));
     setHasConfirmed(true);
-    
+
     // Reload transaction to get updated state
     loadTransaction();
 
-    toast.success('Meetup confirmed! Waiting for seller confirmation.');
+    if (isSeller) {
+      toast.success('Meetup confirmed! Waiting for buyer confirmation.');
+    } else {
+      toast.success('Meetup confirmed! Waiting for seller confirmation.');
+    }
   };
 
   const handleFirstCancelConfirm = () => {
@@ -138,24 +156,26 @@ export function TransactionConfirmPage() {
 
     setIsSubmittingReview(true);
 
-    // Get seller email - we need to determine who the seller is
-    // For this demo, we'll assume we have seller email available
-    // In production, you'd store this in the transaction
+    const isSeller = transaction?.sellerEmail === user?.email;
     const usersJson = localStorage.getItem('users');
     const users = usersJson ? JSON.parse(usersJson) : [];
-    const seller = users.find((u: any) => u.name === sellerName);
 
-    if (seller) {
+    // Determine who to review
+    const reviewedUserEmail = isSeller ? transaction?.buyerEmail : transaction?.sellerEmail;
+    const reviewedUserName = isSeller ? transaction?.buyerName : sellerName;
+    const reviewedUser = users.find((u: any) => u.email === reviewedUserEmail);
+
+    if (reviewedUser) {
       // Create review
       const review = {
         id: Date.now().toString(),
-        reviewedUserEmail: seller.email,
+        reviewedUserEmail: reviewedUser.email,
         reviewerName: user!.name,
         rating,
         comment: reviewComment,
         date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
         listingTitle,
-        reviewType: 'seller', // buyer reviewing seller
+        reviewType: isSeller ? 'buyer' : 'seller',
         transactionId,
       };
 
@@ -165,15 +185,15 @@ export function TransactionConfirmPage() {
       reviews.push(review);
       localStorage.setItem('reviews', JSON.stringify(reviews));
 
-      // Update seller's rating
-      const totalReviews = reviews.filter((r: any) => r.reviewedUserEmail === seller.email).length;
+      // Update reviewed user's rating
+      const totalReviews = reviews.filter((r: any) => r.reviewedUserEmail === reviewedUser.email).length;
       const sumRatings = reviews
-        .filter((r: any) => r.reviewedUserEmail === seller.email)
+        .filter((r: any) => r.reviewedUserEmail === reviewedUser.email)
         .reduce((sum: number, r: any) => sum + r.rating, 0);
       const newRating = sumRatings / totalReviews;
 
       const updatedUsers = users.map((u: any) => {
-        if (u.email === seller.email) {
+        if (u.email === reviewedUser.email) {
           return {
             ...u,
             rating: newRating,
@@ -191,11 +211,19 @@ export function TransactionConfirmPage() {
         const transactions = JSON.parse(transactionsJson);
         const updatedTransactions = transactions.map((t: any) => {
           if (t.id === transactionId) {
-            return {
-              ...t,
-              buyerReviewed: true,
-              status: 'completed',
-            };
+            if (isSeller) {
+              return {
+                ...t,
+                sellerReviewed: true,
+                status: t.buyerReviewed ? 'completed' : t.status,
+              };
+            } else {
+              return {
+                ...t,
+                buyerReviewed: true,
+                status: t.sellerReviewed ? 'completed' : t.status,
+              };
+            }
           }
           return t;
         });
@@ -204,13 +232,13 @@ export function TransactionConfirmPage() {
 
       setIsSubmittingReview(false);
       toast.success('Review submitted successfully!');
-      
+
       setTimeout(() => {
         navigate('/');
       }, 1500);
     } else {
       setIsSubmittingReview(false);
-      toast.error('Could not find seller information');
+      toast.error('Could not find user information');
     }
   };
 
@@ -229,14 +257,16 @@ export function TransactionConfirmPage() {
 
   const bothConfirmed = transaction.buyerConfirmed && transaction.sellerConfirmed;
   const transactionCancelled = transaction.status === 'cancelled';
+  const isSeller = transaction.sellerEmail === user?.email;
+  const hasReviewed = isSeller ? transaction.sellerReviewed : transaction.buyerReviewed;
 
   // If both confirmed and not yet reviewed, show review form
-  if (bothConfirmed && !showReviewForm && !transaction.buyerReviewed && !transactionCancelled) {
+  if (bothConfirmed && !showReviewForm && !hasReviewed && !transactionCancelled) {
     setShowReviewForm(true);
   }
 
   // If transaction was cancelled, allow review
-  if (transactionCancelled && !showReviewForm && !transaction.buyerReviewed && isCancelled) {
+  if (transactionCancelled && !showReviewForm && !hasReviewed && isCancelled) {
     setShowReviewForm(true);
   }
 
@@ -244,14 +274,11 @@ export function TransactionConfirmPage() {
     <div className="min-h-screen bg-red-50">
       {/* Background Pattern */}
       <div className="fixed inset-0 pointer-events-none opacity-5 z-0">
-        <div className="absolute top-20 left-1/4 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute top-40 right-1/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute top-60 left-1/2 w-30 h-30 bg-black rounded-full"></div>
-        <div className="absolute top-96 right-1/4 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute bottom-60 left-1/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute bottom-40 right-1/2 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute top-1/3 left-2/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute bottom-1/3 right-2/3 w-30 h-30 bg-black rounded-full"></div>
+        <div className="absolute top-40 left-1/4 w-24 h-24 bg-black rounded-full"></div>
+        <div className="absolute top-96 right-1/3 w-18 h-18 bg-black rounded-full"></div>
+        <div className="absolute top-[600px] left-1/2 w-30 h-30 bg-black rounded-full"></div>
+        <div className="absolute bottom-80 right-1/4 w-24 h-24 bg-black rounded-full"></div>
+        <div className="absolute bottom-40 left-1/3 w-18 h-18 bg-black rounded-full"></div>
       </div>
 
       {/* Header */}
@@ -355,14 +382,27 @@ export function TransactionConfirmPage() {
                     )}
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-700">Seller Confirmation:</span>
-                    {transaction.sellerConfirmed ? (
-                      <span className="flex items-center gap-2 text-green-600 font-medium">
-                        <Check className="w-5 h-5" />
-                        Confirmed
-                      </span>
+                    <span className="text-gray-700">
+                      {transaction.sellerEmail === user?.email ? 'Buyer Confirmation:' : 'Seller Confirmation:'}
+                    </span>
+                    {transaction.sellerEmail === user?.email ? (
+                      transaction.buyerConfirmed ? (
+                        <span className="flex items-center gap-2 text-green-600 font-medium">
+                          <Check className="w-5 h-5" />
+                          Confirmed
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">Pending</span>
+                      )
                     ) : (
-                      <span className="text-gray-500">Pending</span>
+                      transaction.sellerConfirmed ? (
+                        <span className="flex items-center gap-2 text-green-600 font-medium">
+                          <Check className="w-5 h-5" />
+                          Confirmed
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">Pending</span>
+                      )
                     )}
                   </div>
                 </div>
@@ -433,14 +473,14 @@ export function TransactionConfirmPage() {
                 </div>
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">Transaction Complete!</h2>
                 <p className="text-gray-600">
-                  How was your experience with <strong>{sellerName}</strong>?
+                  How was your experience with <strong>{transaction?.sellerEmail === user?.email ? buyerName : sellerName}</strong>?
                 </p>
               </div>
 
               <form onSubmit={handleSubmitReview} className="space-y-6">
                 {/* Star Rating */}
                 <div className="space-y-2">
-                  <Label>Rate the Seller</Label>
+                  <Label>{transaction?.sellerEmail === user?.email ? 'Rate the Buyer' : 'Rate the Seller'}</Label>
                   <div className="flex gap-2 justify-center">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button

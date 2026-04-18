@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { User, Plus, LogOut, HelpCircle, Clock } from 'lucide-react';
+import { User, Plus, LogOut, HelpCircle, Clock, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { ListingCard } from '../components/ListingCard';
 import { FilterSection, CheckboxFilter } from '../components/FilterSection';
@@ -16,7 +16,6 @@ export function HomePage() {
     categories: [],
     priceRanges: [],
     conditions: [],
-    locations: [],
   });
 
   const [sortBy, setSortBy] = useState('recommended');
@@ -24,11 +23,11 @@ export function HomePage() {
 
   useEffect(() => {
     if (user) {
-      // Count pending transactions
+      // Count pending transactions (where user is buyer OR seller)
       const transactionsJson = localStorage.getItem('transactions');
       const transactions = transactionsJson ? JSON.parse(transactionsJson) : [];
       const pending = transactions.filter((t: any) =>
-        t.userId === user.id &&
+        (t.userId === user.id || t.sellerEmail === user.email) &&
         t.status !== 'completed' &&
         t.status !== 'cancelled'
       );
@@ -79,13 +78,6 @@ export function HomePage() {
       filtered = filtered.filter((listing) => filters.conditions.includes(listing.condition));
     }
 
-    // Apply location filters
-    if (filters.locations.length > 0) {
-      filtered = filtered.filter((listing) => 
-        filters.locations.some(loc => listing.location.includes(loc))
-      );
-    }
-
     // Apply sorting
     switch (sortBy) {
       case 'price-low':
@@ -109,14 +101,12 @@ export function HomePage() {
     <div className="min-h-screen bg-red-50 relative overflow-x-hidden">
       {/* Background Pattern */}
       <div className="fixed inset-0 pointer-events-none opacity-5 z-0">
-        <div className="absolute top-20 left-1/4 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute top-40 right-1/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute top-60 left-1/2 w-30 h-30 bg-black rounded-full"></div>
-        <div className="absolute top-96 right-1/4 w-24 h-24 bg-black rounded-full"></div>
+        <div className="absolute top-40 left-1/4 w-24 h-24 bg-black rounded-full"></div>
+        <div className="absolute top-80 right-1/3 w-18 h-18 bg-black rounded-full"></div>
+        <div className="absolute top-[500px] left-1/2 w-30 h-30 bg-black rounded-full"></div>
+        <div className="absolute top-[700px] right-1/4 w-24 h-24 bg-black rounded-full"></div>
         <div className="absolute bottom-60 left-1/3 w-18 h-18 bg-black rounded-full"></div>
         <div className="absolute bottom-40 right-1/2 w-24 h-24 bg-black rounded-full"></div>
-        <div className="absolute top-1/3 left-2/3 w-18 h-18 bg-black rounded-full"></div>
-        <div className="absolute bottom-1/3 right-2/3 w-30 h-30 bg-black rounded-full"></div>
       </div>
 
       {/* Header */}
@@ -140,6 +130,15 @@ export function HomePage() {
               )}
               {isAuthenticated ? (
                 <>
+                  {user?.email === 'admin@email.com' && (
+                    <button
+                      onClick={() => navigate('/admin')}
+                      className="flex items-center space-x-2 px-5 py-2.5 bg-yellow-500 text-black hover:bg-yellow-400 rounded-lg transition-colors border border-yellow-600 font-semibold"
+                    >
+                      <Shield className="w-5 h-5" />
+                      <span>Admin</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => navigate(`/profile/${user!.email}`)}
                     className="flex items-center space-x-2 px-5 py-2.5 bg-white text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-white"
@@ -267,43 +266,10 @@ export function HomePage() {
                 />
               </FilterSection>
 
-              <FilterSection title="Location">
-                <CheckboxFilter 
-                  label="Downtown Houston" 
-                  count={listings.filter(l => l.location.includes('Downtown Houston')).length}
-                  checked={filters.locations.includes('Downtown Houston')}
-                  onChange={(checked) => handleFilterChange('locations', 'Downtown Houston', checked)}
-                />
-                <CheckboxFilter 
-                  label="The Woodlands" 
-                  count={listings.filter(l => l.location.includes('The Woodlands')).length}
-                  checked={filters.locations.includes('The Woodlands')}
-                  onChange={(checked) => handleFilterChange('locations', 'The Woodlands', checked)}
-                />
-                <CheckboxFilter 
-                  label="Sugar Land" 
-                  count={listings.filter(l => l.location.includes('Sugar Land')).length}
-                  checked={filters.locations.includes('Sugar Land')}
-                  onChange={(checked) => handleFilterChange('locations', 'Sugar Land', checked)}
-                />
-                <CheckboxFilter 
-                  label="Katy" 
-                  count={listings.filter(l => l.location.includes('Katy')).length}
-                  checked={filters.locations.includes('Katy')}
-                  onChange={(checked) => handleFilterChange('locations', 'Katy', checked)}
-                />
-                <CheckboxFilter 
-                  label="Pearland" 
-                  count={listings.filter(l => l.location.includes('Pearland')).length}
-                  checked={filters.locations.includes('Pearland')}
-                  onChange={(checked) => handleFilterChange('locations', 'Pearland', checked)}
-                />
-              </FilterSection>
-
-              {(filters.categories.length > 0 || filters.priceRanges.length > 0 || 
-                filters.conditions.length > 0 || filters.locations.length > 0) && (
-                <button 
-                  onClick={() => setFilters({ categories: [], priceRanges: [], conditions: [], locations: [] })}
+              {(filters.categories.length > 0 || filters.priceRanges.length > 0 ||
+                filters.conditions.length > 0) && (
+                <button
+                  onClick={() => setFilters({ categories: [], priceRanges: [], conditions: [] })}
                   className="w-full mt-6 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
                 >
                   Clear Filters
@@ -348,7 +314,7 @@ export function HomePage() {
               <div className="text-center py-12">
                 <p className="text-gray-500 text-lg">No listings match your filters</p>
                 <button
-                  onClick={() => setFilters({ categories: [], priceRanges: [], conditions: [], locations: [] })}
+                  onClick={() => setFilters({ categories: [], priceRanges: [], conditions: [] })}
                   className="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                 >
                   Clear All Filters
@@ -362,16 +328,19 @@ export function HomePage() {
       {/* Floating Buttons (only for authenticated users) */}
       {isAuthenticated && (
         <>
-          <button
-            onClick={() => navigate('/create-listing')}
-            className="fixed bottom-8 right-8 bg-red-600 hover:bg-red-700 text-white rounded-full p-4 shadow-lg transition-all hover:shadow-xl flex items-center space-x-2 z-50"
-          >
-            <Plus className="w-6 h-6" />
-            <span className="font-semibold pr-2">Post Listing</span>
-          </button>
+          {/* Post Listing - Hidden for admins and banned users */}
+          {user?.email !== 'admin@email.com' && !user?.bannedFromListing && (
+            <button
+              onClick={() => navigate('/create-listing')}
+              className="fixed bottom-8 right-8 bg-red-600 hover:bg-red-700 text-white rounded-full p-4 shadow-lg transition-all hover:shadow-xl flex items-center space-x-2 z-50"
+            >
+              <Plus className="w-6 h-6" />
+              <span className="font-semibold pr-2">Post Listing</span>
+            </button>
+          )}
 
           {/* Pending Transactions Button */}
-          {pendingTransactionsCount > 0 && (
+          {pendingTransactionsCount > 0 && user?.email !== 'admin@email.com' && (
             <button
               onClick={() => navigate('/pending-transactions')}
               className="fixed bottom-24 right-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg transition-all hover:shadow-xl flex items-center space-x-2 z-50"

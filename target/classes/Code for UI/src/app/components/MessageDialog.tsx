@@ -17,52 +17,60 @@ interface MessageDialogProps {
   isOpen: boolean;
   onClose: () => void;
   listerName: string;
+  listerEmail: string;
   listingTitle: string;
 }
 
 interface Message {
   id: string;
   text: string;
-  sender: 'user' | 'seller';
+  senderEmail: string;
+  senderName: string;
   timestamp: string;
+  readBy: string[];
 }
 
 interface Conversation {
   id: string;
+  buyerEmail: string;
+  buyerName: string;
+  sellerEmail: string;
   sellerName: string;
   listingTitle: string;
   messages: Message[];
   lastMessageTime: string;
 }
 
-export function MessageDialog({ isOpen, onClose, listerName, listingTitle }: MessageDialogProps) {
+export function MessageDialog({ isOpen, onClose, listerName, listerEmail, listingTitle }: MessageDialogProps) {
   const [message, setMessage] = useState('');
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const handleSend = () => {
     if (message.trim() && user) {
-      // Create conversation ID based on seller name and listing title
-      const conversationId = `${listerName}_${listingTitle}`.replace(/\s+/g, '_');
-      
-      // Load existing conversations
-      const conversationsJson = localStorage.getItem(`conversations_${user.id}`);
+      // Create conversation ID based on buyer email, seller email, and listing title
+      const conversationId = `${user.email}_${listerEmail}_${listingTitle}`.replace(/\s+/g, '_').replace(/@/g, '-');
+
+      // Load all conversations
+      const conversationsJson = localStorage.getItem('conversations');
       const conversations: Conversation[] = conversationsJson ? JSON.parse(conversationsJson) : [];
-      
+
       // Find or create conversation
       let conversation = conversations.find(c => c.id === conversationId);
-      
+
       const newMessage: Message = {
         id: Date.now().toString(),
         text: message,
-        sender: 'user',
-        timestamp: new Date().toLocaleTimeString('en-US', { 
-          hour: 'numeric', 
+        senderEmail: user.email,
+        senderName: user.name,
+        timestamp: new Date().toLocaleTimeString('en-US', {
+          hour: 'numeric',
           minute: '2-digit',
-          hour12: true 
+          hour12: true
         }),
+        readBy: [user.email],
       };
-      
+
       if (conversation) {
         // Add to existing conversation
         conversation.messages.push(newMessage);
@@ -71,6 +79,9 @@ export function MessageDialog({ isOpen, onClose, listerName, listingTitle }: Mes
         // Create new conversation
         conversation = {
           id: conversationId,
+          buyerEmail: user.email,
+          buyerName: user.name,
+          sellerEmail: listerEmail,
           sellerName: listerName,
           listingTitle: listingTitle,
           messages: [newMessage],
@@ -78,9 +89,9 @@ export function MessageDialog({ isOpen, onClose, listerName, listingTitle }: Mes
         };
         conversations.push(conversation);
       }
-      
-      // Save conversations
-      localStorage.setItem(`conversations_${user.id}`, JSON.stringify(conversations));
+
+      // Save all conversations
+      localStorage.setItem('conversations', JSON.stringify(conversations));
 
       setMessage('');
       onClose();

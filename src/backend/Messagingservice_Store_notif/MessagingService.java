@@ -1,7 +1,9 @@
 package Messagingservice_Store_notif;
+
 import java.lang.*;
 import java.sql.SQLException;
 import java.util.Scanner;
+
 class MessagingService
 {
     public static void main(String args[]) throws SQLException
