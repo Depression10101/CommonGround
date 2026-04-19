@@ -25,11 +25,13 @@ export function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [userListings, setUserListings] = useState<any[]>([]);
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // we only support viewing your own profile right now
-    if (!currentUser) return;
+    if (!currentUser) { setLoading(false); return; }
 
+    setLoading(true);
     getProfile(email || currentUser.email)
       .then((data) => {
         setProfile({
@@ -48,7 +50,8 @@ export function ProfilePage() {
       .catch(() => {
         setProfile(null);
         setUserListings([]);
-      });
+      })
+      .finally(() => setLoading(false));
   }, [email, currentUser]);
 
   const handleDeleteAccount = async () => {
@@ -86,6 +89,14 @@ export function ProfilePage() {
             Sign In
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-red-50 flex items-center justify-center">
+        <p className="text-gray-500">Loading profile...</p>
       </div>
     );
   }
