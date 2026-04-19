@@ -17,8 +17,6 @@ is_suspended BOOLEAN DEFAULT FALSE,
 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Add created_at to existing installs that ran before this column was added
-ALTER TABLE account ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
 CREATE TABLE IF NOT EXISTS client (
     account_id INT PRIMARY KEY,
