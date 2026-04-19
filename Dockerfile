@@ -11,8 +11,9 @@ FROM maven:3.9-eclipse-temurin-17 AS backend
 WORKDIR /app
 COPY pom.xml .
 COPY src/ src/
-# drop the built frontend where Maven expects it
-COPY --from=frontend /frontend/dist "src/frontend/Code for UI/dist/"
+# Copy dist to a temp location first (Docker can't COPY directly into paths with spaces)
+COPY --from=frontend /frontend/dist /tmp/frontend-dist/
+RUN mkdir -p "src/frontend/Code for UI/dist" && cp -r /tmp/frontend-dist/. "src/frontend/Code for UI/dist/"
 RUN mvn clean package -DskipTests
 
 # Stage 3: run on Tomcat (plain HTTP — Railway handles HTTPS at the edge)
