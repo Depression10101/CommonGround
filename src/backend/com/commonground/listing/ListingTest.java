@@ -763,8 +763,7 @@ private static void test21_AuditTrailWrittenAfterCreate() {
         String sql = "SELECT COUNT(*) FROM audit_trail " +
                      "WHERE listing_id = ? AND client_id = ? AND action = ?";
  
-        try (java.sql.Connection conn = java.sql.DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/CommonGround_db", "cguser", "cgpass123");
+        try (java.sql.Connection conn = com.commonground.util.DbUtil.getConnection();
              java.sql.PreparedStatement stmt = conn.prepareStatement(sql)) {
  
             stmt.setInt   (1, auditListingId);

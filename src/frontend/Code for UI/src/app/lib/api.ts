@@ -1,6 +1,6 @@
 // all fetch calls to the Java backend go through here
-
-const BASE = '/api';
+// VITE_API_BASE_URL is set in Vercel env vars to your Railway backend URL
+const BASE = (import.meta.env.VITE_API_BASE_URL ?? '') + '/api';
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(BASE + url, {

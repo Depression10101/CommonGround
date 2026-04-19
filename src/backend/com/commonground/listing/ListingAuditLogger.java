@@ -21,11 +21,6 @@ public class ListingAuditLogger {
  
    
     // Kelly swap these out for whatever your DB credentials are
-    private static final String DB_URL  = "jdbc:mysql://localhost:3306/CommonGround_db";
-    private static final String DB_USER = "cguser";
-    private static final String DB_PASS = "cgpass123";
- 
-   
     public static final String ACTION_CREATE = "CreateListing";
     public static final String ACTION_EDIT   = "EditListing";
     public static final String ACTION_DELETE = "DeleteListing";

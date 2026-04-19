@@ -6,9 +6,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-// lets the React app on port 5173 talk to Tomcat on 8080
+// allows the React app (local dev or Vercel) to talk to this backend
+// set ALLOWED_ORIGIN env var on Railway to your Vercel URL, e.g. https://commonground.vercel.app
 @WebFilter("/*")
 public class CORSFilter implements Filter {
+
+    private static final String ALLOWED_ORIGIN =
+            System.getenv().getOrDefault("ALLOWED_ORIGIN", "http://localhost:5173");
 
     @Override
     public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
@@ -17,7 +21,12 @@ public class CORSFilter implements Filter {
         HttpServletRequest request   = (HttpServletRequest) req;
         HttpServletResponse response = (HttpServletResponse) res;
 
-        response.setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
+        String origin = request.getHeader("Origin");
+        if (origin != null && (origin.equals(ALLOWED_ORIGIN)
+                || origin.equals("http://localhost:5173")
+                || origin.equals("https://localhost:5173"))) {
+            response.setHeader("Access-Control-Allow-Origin", origin);
+        }
         response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
         response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
         response.setHeader("Access-Control-Allow-Credentials", "true");

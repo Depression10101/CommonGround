@@ -19,12 +19,8 @@ import java.util.List;
 public class AdminDAO {
 
     // same credentials as ListingDAO
-    private static final String DB_URL  = "jdbc:mysql://localhost:3306/CommonGround_db";
-    private static final String DB_USER = "cguser";
-    private static final String DB_PASS = "cgpass123";
-
     private Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+        return com.commonground.util.DbUtil.getConnection();
     }
 
 
