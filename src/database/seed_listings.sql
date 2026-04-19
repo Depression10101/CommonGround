@@ -10,12 +10,13 @@ SET SQL_SAFE_UPDATES = 0;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ─────────────────────────────────────────
---  CLEAR OLD SEED DATA (fresh start)
+--  CLEAR OLD LISTINGS (fresh start)
+--  Only clears listings and images — never deletes accounts so real
+--  registered users are not wiped. Accounts below use INSERT IGNORE
+--  so re-running this script is safe.
 -- ─────────────────────────────────────────
 DELETE FROM listing_image;
 DELETE FROM listing;
-DELETE FROM client WHERE account_id IN (SELECT account_id FROM account WHERE (email LIKE '%@commonground.com' OR email LIKE '%@gmail.com' OR email LIKE '%@yahoo.com' OR email LIKE '%@outlook.com') AND is_admin = FALSE);
-DELETE FROM account WHERE (email LIKE '%@commonground.com' OR email LIKE '%@gmail.com' OR email LIKE '%@yahoo.com' OR email LIKE '%@outlook.com') AND is_admin = FALSE;
 
 -- ─────────────────────────────────────────
 --  CATEGORIES
