@@ -317,7 +317,7 @@ export function TransactionConfirmPage() {
               {bothConfirmed && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
                   <p className="text-sm text-green-900">
-                    <strong>Success!</strong> Both parties have confirmed the transaction. You can now leave a review for the seller.
+                    <strong>Success!</strong> Both parties have confirmed the transaction. You can now leave a review for each other.
                   </p>
                 </div>
               )}
@@ -415,7 +415,7 @@ export function TransactionConfirmPage() {
                   <Label htmlFor="reviewComment">Your Review</Label>
                   <Textarea
                     id="reviewComment"
-                    placeholder="Share your experience with this seller..."
+                    placeholder="Share your experience with this person..."
                     rows={5}
                     value={reviewComment}
                     onChange={(e) => setReviewComment(e.target.value)}
